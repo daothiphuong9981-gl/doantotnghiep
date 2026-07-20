@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load l10n %}
 
 {% block title %}{{ court.name }} - Sân Cầu Lông Đà Nẵng{% endblock %}
 
@@ -122,7 +123,7 @@
             <div id="mini-map" class="mb-3 border flex-grow-1 shadow-sm"></div>
             <div class="alert alert-secondary mb-0 p-2 text-center" style="font-size: 0.85rem;">
                 <i class="fa-solid fa-location-crosshairs text-primary me-1"></i>Tọa độ GPS: 
-                <strong>{{ court.latitude }}</strong>, <strong>{{ court.longitude }}</strong>
+                <strong>{{ court.latitude|unlocalize }}</strong>, <strong>{{ court.longitude|unlocalize }}</strong>
             </div>
         </div>
     </div>
@@ -134,10 +135,10 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        var lat = parseFloat("{{ court.latitude }}");
-        var lng = parseFloat("{{ court.longitude }}");
-        var courtName = "{{ court.name }}";
-        var courtAddress = "{{ court.address }}";
+        var lat = parseFloat("{{ court.latitude|unlocalize }}");
+        var lng = parseFloat("{{ court.longitude|unlocalize }}");
+        var courtName = "{{ court.name|escapejs }}";
+        var courtAddress = "{{ court.address|escapejs }}";
 
         // Khởi tạo bản đồ mini
         var map = L.map('mini-map').setView([lat, lng], 15);

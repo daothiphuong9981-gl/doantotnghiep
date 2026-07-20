@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load l10n %}
 
 {% block title %}Bản đồ Sân Cầu Lông Đà Nẵng{% endblock %}
 
@@ -83,7 +84,7 @@
             {% if courts %}
                 <div class="d-flex flex-column gap-3">
                     {% for court in courts %}
-                        <div class="card court-card border shadow-sm p-3" onclick="focusCourtOnMap({{ court.latitude }}, {{ court.longitude }}, '{{ court.name }}')">
+                        <div class="card court-card border shadow-sm p-3" onclick="focusCourtOnMap({{ court.latitude|unlocalize }}, {{ court.longitude|unlocalize }}, '{{ court.name|escapejs }}')">
                             <div class="d-flex justify-content-between align-items-start mb-2">
                                 <h6 class="fw-bold text-dark mb-0">{{ court.name }}</h6>
                                 <span class="badge bg-primary fs-7">{{ court.district }}</span>

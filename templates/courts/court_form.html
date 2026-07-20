@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load l10n %}
 
 {% block title %}{{ title }} - Sân Cầu Lông Đà Nẵng{% endblock %}
 
@@ -49,14 +50,14 @@
                             {% if form.latitude.errors %}
                                 <div class="text-danger small mb-1">{{ form.latitude.errors }}</div>
                             {% endif %}
-                            <input type="number" name="latitude" step="any" class="form-control" placeholder="Ví dụ: 16.0595" required id="id_latitude" value="{{ form.latitude.value|default:'' }}">
+                            <input type="number" name="latitude" step="any" class="form-control" placeholder="Ví dụ: 16.0595" required id="id_latitude" value="{{ form.latitude.value|unlocalize|default:'' }}">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="id_longitude" class="form-label fw-semibold">Kinh độ (Longitude)</label>
                             {% if form.longitude.errors %}
                                 <div class="text-danger small mb-1">{{ form.longitude.errors }}</div>
                             {% endif %}
-                            <input type="number" name="longitude" step="any" class="form-control" placeholder="Ví dụ: 108.212" required id="id_longitude" value="{{ form.longitude.value|default:'' }}">
+                            <input type="number" name="longitude" step="any" class="form-control" placeholder="Ví dụ: 108.212" required id="id_longitude" value="{{ form.longitude.value|unlocalize|default:'' }}">
                         </div>
                         <div class="col-12 mb-4">
                             <label for="id_description" class="form-label fw-semibold">Mô tả cụ thể sân</label>
