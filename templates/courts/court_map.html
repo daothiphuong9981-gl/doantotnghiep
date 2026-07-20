@@ -144,11 +144,24 @@
         // Khởi tạo bản đồ Đà Nẵng mặc định
         map = L.map('map').setView([16.0595, 108.212], 13);
 
-        // Nạp bản đồ nền OpenStreetMap
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        // Nạp bản đồ nền OpenStreetMap kèm referrerPolicy và cơ chế dự phòng lỗi 403 Blocked
+        var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors (ODbL)'
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors (ODbL)',
+            referrerPolicy: 'strict-origin-when-cross-origin'
         }).addTo(map);
+
+        osmLayer.on('tileerror', function(error) {
+            if (!map._osmFallbackTriggered) {
+                map._osmFallbackTriggered = true;
+                map.removeLayer(osmLayer);
+                L.tileLayer('https://tile.openstreetmap.de/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors (ODbL)',
+                    referrerPolicy: 'strict-origin-when-cross-origin'
+                }).addTo(map);
+            }
+        });
 
         markersGroup = L.featureGroup().addTo(map);
 

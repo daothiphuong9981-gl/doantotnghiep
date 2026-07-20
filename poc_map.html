@@ -143,11 +143,24 @@
     // 1. Khởi tạo bản đồ canh giữa Đà Nẵng
     const map = L.map('map').setView([16.0544, 108.2022], 13);
 
-    // 2. Thêm ô gạch bản đồ từ OpenStreetMap đúng chuẩn attribution ODbL
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // 2. Thêm ô gạch bản đồ từ OpenStreetMap đúng chuẩn attribution ODbL kèm referrerPolicy
+    var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors (ODbL)'
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors (ODbL)',
+        referrerPolicy: 'strict-origin-when-cross-origin'
     }).addTo(map);
+
+    osmLayer.on('tileerror', function(error) {
+        if (!map._osmFallbackTriggered) {
+            map._osmFallbackTriggered = true;
+            map.removeLayer(osmLayer);
+            L.tileLayer('https://tile.openstreetmap.de/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors (ODbL)',
+                referrerPolicy: 'strict-origin-when-cross-origin'
+            }).addTo(map);
+        }
+    });
 
     // 3. Dữ liệu 5 sân cầu lông mẫu (Tọa độ giả định phục vụ demo)
     const courtsData = [

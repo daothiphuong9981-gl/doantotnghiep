@@ -142,10 +142,22 @@
         // Khởi tạo bản đồ mini
         var map = L.map('mini-map').setView([lat, lng], 15);
 
-        // Thêm bản đồ nền OpenStreetMap
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors (ODbL)'
+        // Thêm bản đồ nền OpenStreetMap kèm referrerPolicy và cơ chế dự phòng lỗi 403 Blocked
+        var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors (ODbL)',
+            referrerPolicy: 'strict-origin-when-cross-origin'
         }).addTo(map);
+
+        osmLayer.on('tileerror', function(error) {
+            if (!map._osmFallbackTriggered) {
+                map._osmFallbackTriggered = true;
+                map.removeLayer(osmLayer);
+                L.tileLayer('https://tile.openstreetmap.de/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors (ODbL)',
+                    referrerPolicy: 'strict-origin-when-cross-origin'
+                }).addTo(map);
+            }
+        });
 
         // Thêm marker tại tọa độ sân
         var marker = L.marker([lat, lng]).addTo(map);
