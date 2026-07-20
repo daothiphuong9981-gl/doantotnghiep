@@ -86,7 +86,7 @@ Vai AI chính: Tester (sinh test từ ĐẶC TẢ, không từ code). Đầu ra 
 ## GIAI ĐOẠN 6 — BÁO CÁO & BẢO VỆ (Tuần 12–13)
 Vai AI chính: Documenter + Reviewer.
 
-- [ ] 6.1 Ghép chương, viết Kết luận + hướng phát triển, rà trích dẫn, format theo mẫu khoa
+- [x] 6.1 Ghép chương, viết Kết luận + hướng phát triển, rà trích dẫn, format theo mẫu khoa
 - [ ] 6.2 AI Reviewer đọc phản biện toàn bộ báo cáo như một thành viên hội đồng khó tính → sửa
 - [ ] 6.3 Slide bảo vệ 12–15 trang + kịch bản demo 7–10 phút (có phương án dự phòng: video demo nếu mạng lỗi)
 - [ ] 6.4 Soạn 15 câu hỏi phản biện dự kiến + đáp án (AI đóng vai hội đồng để tập vấn đáp)

@@ -2,18 +2,17 @@
 > Đây là file AI đọc ĐẦU TIÊN mỗi phiên để biết nối tiếp từ đâu.
 
 ## Trạng thái hiện tại
-- Giai đoạn: 6 — Tổng hợp báo cáo & Luyện bảo vệ (Chuẩn bị bước vào Tuần 12–13)
-- Task đang làm: Hoàn thành 5.4 Viết phần Triển khai vào Chương 4 & Chấm đạt Gate 5 — Triển khai
-- Task kế tiếp: 6.1 Ghép & hoàn thiện báo cáo tốt nghiệp từ Chương 1 đến Chương 4 + Lời nói đầu/Kết luận
+- Giai đoạn: 6 — Tổng hợp báo cáo & Luyện bảo vệ (Tuần 12–13)
+- Task đang làm: Hoàn thành 6.1 Ghép chương, viết Kết luận + hướng phát triển, format theo mẫu Khoa CNTT ĐH Duy Tân
+- Task kế tiếp: 6.2 AI Reviewer đọc phản biện toàn bộ báo cáo như một thành viên hội đồng khó tính → sửa lỗi
 
 ## Nhật ký phiên gần nhất
-- Ngày: 20/07/2026 (Phiên 5)
-- Đã làm: Hoàn thành Task 5.4 & Thẩm định Cổng chất lượng Gate 5 — Triển khai (Đóng vai SUPERVISOR & DOCUMENTER):
-  1. Biên soạn hoàn chỉnh tệp báo cáo chuẩn học thuật `baocao_chuong4.md` tổng hợp toàn diện cả 2 nội dung lớn của Chương 4: **Kiểm thử hệ thống (Mục 4.1 – 4.4)** và **Triển khai Production & UAT (Mục 4.5 – 4.9)**.
-  2. Tích hợp 100% số liệu thực tiễn và kết quả kiểm chứng: 22/22 ca kiểm thử (`TC-01` đến `TC-22`) Pass 100%, chi tiết cơ chế chống trùng lịch (`select_for_update` + `UniqueConstraint`), bảo mật IDOR (`@owner_required`), cùng minh chứng triển khai SQLite trên PythonAnywhere (`daothiphuong.pythonanywhere.com`) cho 16 cụm sân Đà Nẵng.
-  3. Đánh dấu rõ 6 vị trí cần chèn ảnh thực tế (`[CẦN BỔ SUNG: Ảnh chụp...]`) trong `baocao_chuong4.md` để sinh viên dễ dàng chụp màn hình dán vào báo cáo nộp trường.
-  4. Đóng vai SUPERVISOR thẩm định và kết luận **ĐẠT CỔNG CHẤT LƯỢNG GATE 5 — TRIỂN KHAI** với 4/4 tiêu chí: Link công khai truy cập mượt mà (`daothiphuong.pythonanywhere.com/courts/`), luồng đặt sân end-to-end hoàn hảo, dữ liệu thật ≥ 10 sân đúng tọa độ, bảo mật `DEBUG=False` & SQLite an toàn.
-- Kết quả/đầu ra: `baocao_chuong4.md`, `EVIDENCE.md` (mục 5.4), `ROADMAP.md`, `STATE.md`.
+- Ngày: 20/07/2026 (Phiên 6)
+- Đã làm: Hoàn thành Task 6.1 (Ghép tài liệu toàn văn & Ánh xạ hồ sơ đồ án ĐH Duy Tân):
+  1. Tổng hợp và hợp nhất 4 chương báo cáo đã có (`baocao_chuong1.md` đến `chuong4.md`), biên soạn bổ sung phần mở đầu/bổ trợ (Trang Bìa chính, Bìa phụ, Lời cam đoan, Lời cảm ơn, Mục lục, Danh mục hình vẽ/bảng biểu/từ viết tắt) cùng **Chương 5: Kết luận và Hướng phát triển** và Tài liệu tham khảo theo đúng quy chuẩn ĐH Duy Tân. Tạo thành tệp master toàn văn [baocao_totnghiep_hoanchinh.md](file:///d:/Hieu/Test/doantotnghiep/baocao_totnghiep_hoanchinh.md) (1.188 dòng, ~118 KB).
+  2. Phân tích chi tiết 18 biểu mẫu chuẩn (`.docx`/`.xlsx`) trong bộ thư mục mẫu `document/` mà sinh viên bổ sung (Khung Agile/Scrum Khoa CNTT ĐH Duy Tân gồm Trang bìa, Lời cảm ơn, Proposal, Project Plan, Product Backlog, User Story, ERD, API Design Detail, Test Plan và Test Case cho 3 Sprint).
+  3. Biên soạn tài liệu hướng dẫn chuyên sâu [HO_SO_DO_AN_DUY_TAN.md](file:///d:/Hieu/Test/doantotnghiep/HO_SO_DO_AN_DUY_TAN.md), lập bảng ánh xạ 1-1 giúp sinh viên dễ dàng trích xuất nội dung từ `baocao_totnghiep_hoanchinh.md` dán vào đúng các biểu mẫu của Khoa khi nộp hồ sơ tách rời.
+- Kết quả/đầu ra: `baocao_totnghiep_hoanchinh.md`, `HO_SO_DO_AN_DUY_TAN.md`, `build_master_report.py`, `ROADMAP.md`, `STATE.md`.
 
 - Ngày: 20/07/2026 (Phiên 3)
 - Đã làm: Hoàn thành Task 5.2 (Nhập dữ liệu thực tế 16 sân cầu lông Đà Nẵng & Chuẩn hóa định dạng tọa độ WebGIS):

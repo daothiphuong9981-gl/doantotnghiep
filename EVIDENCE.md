@@ -1182,5 +1182,33 @@ Từ các kết quả kiểm thử thực tiễn trên cả hai phương diện 
   - `[CẦN BỔ SUNG: Ảnh chụp màn hình điện thoại (Mobile Screenshot) khi người dùng thao tác đặt sân và duyệt đơn thành công trên Production]`
 - **Dùng cho**: Hoàn thiện trực tiếp **Chương 4 — Kiểm thử và Triển khai hệ thống** trong Báo cáo tốt nghiệp (chuẩn bị bước vào Giai đoạn 6 - Tổng hợp báo cáo & Bảo vệ).
 
+---
+
+## GIAI ĐOẠN 6: BÁO CÁO TỐT NGHIỆP & BẢO VỆ (Tuần 12–13)
+
+### [6.1] Ghép chương, viết Kết luận & Ánh xạ Bộ hồ sơ đồ án mẫu theo chuẩn Khoa CNTT — ĐH Duy Tân — 20/07/2026
+
+- **Hoạt động**:
+  - **Hợp nhất Báo cáo Đồ án Tốt nghiệp Hoàn chỉnh (`baocao_totnghiep_hoanchinh.md`)**:
+    - Ghép nối liền mạch 4 chương báo cáo đã có (`baocao_chuong1.md`, `baocao_chuong2.md`, `baocao_chuong3.md`, `baocao_chuong4.md`).
+    - Chuẩn hóa toàn bộ phần **Mở đầu và Bổ trợ theo chuẩn quy cách luận văn Khoa CNTT ĐH Duy Tân**: Trang Bìa chính (bìa cứng/bìa vàng), Trang Phụ bìa, Lời cam đoan tính trung thực & bản quyền, Lời cảm ơn, Mục lục tự động, Danh mục hình vẽ (Hình 1.1 đến Hình 4.1), Danh mục bảng biểu (Bảng 1.1 đến Bảng 4.3) và Danh mục từ viết tắt (`ACID`, `CRUD`, `ERD`, `FR`, `IDOR`, `MoSCoW`, `MVT`, `ODbL`, `PoC`, `UAT`, `WebGIS`, `WSGI`).
+    - Biên soạn mới hoàn toàn **Chương 5: Kết luận và Hướng phát triển** dựa trên kết quả vận hành thực tế trên PythonAnywhere:
+      - *Kết quả đạt được*: Khảo sát ≥15 sân tại 6 quận, PoC Leaflet mượt mà, ERD 3NF, xử lý triệt để bài toán chống trùng lịch (`select_for_update` + `UniqueConstraint`), bảo mật `@owner_required` chống IDOR, tuân thủ NĐ 13/2023 và ODbL, deploy thành công PythonAnywhere SQLite + xử lý lỗi `403 Referrer Blocked` / `|unlocalize`, đạt Likert 4.64/5.0 từ 5 người dùng.
+      - *Hạn chế trung thực (Out of Scope)*: Chưa tích hợp cổng thanh toán trực tuyến MoMo/VNPay, chưa có tin nhắn Zalo/SMS nhắc lịch tự động, phạm vi dữ liệu mới tập trung tại nội thành Đà Nẵng, chưa có AI gợi ý sân theo thói quen.
+      - *Hướng phát triển tương lai*: Tích hợp thanh toán QR tự động, kết nối Zalo OA, phát triển ứng dụng di động Flutter/React Native và ứng dụng AI Suggestion Engine.
+    - Chuẩn hóa **Danh mục Tài liệu tham khảo** theo định dạng IEEE/APA (gồm 4 tài liệu tiếng Việt, 6 tài liệu/tài liệu kỹ thuật quốc tế).
+    - Tổng khối lượng tệp Master: **1.188 dòng, 118.066 bytes (~118 KB)**, cấu trúc phân cấp markdown chuẩn mực, dễ dàng chuyển đổi sang Word (`.docx`) hoặc PDF nộp trường.
+  - **Phân tích Khung tài liệu mẫu & Ánh xạ Bộ hồ sơ đồ án Agile/Scrum (`HO_SO_DO_AN_DUY_TAN.md`)**:
+    - Kiểm tra sâu 18 tệp biểu mẫu chuẩn (`.docx` và `.xlsx`) trong thư mục `document/` do sinh viên bổ sung (Khung hồ sơ đồ án mẫu của Đại học Duy Tân).
+    - Xây dựng bảng ánh xạ chi tiết 1-1 giữa nội dung của `baocao_totnghiep_hoanchinh.md` vào từng biểu mẫu:
+      - Nhóm 1 (Hành chính): Bìa chính `1.BIACHINH`, Bìa phụ `2.BIAPHU`, Lời cảm ơn `3. Lời cảm ơn`, Biên bản mentor `13.MeetingWithMentor`, Họp tuần `14.WeeklyMeeting`.
+      - Nhóm 2 (Agile Management): Đề cương `4.Proposal` (Khớp Chương 1), Kế hoạch `5.Project Plan` (Khớp `ROADMAP.md`), Product Backlog `7.ProductBacklog` / `16.ProductBacklog-and-User-story.xlsx` (Khớp Bảng 3.1 & 3.2), Coding Convention `12.CodingConvention`.
+      - Nhóm 3 (Thiết kế & Kiểm thử): Thiết kế UI `8.Interface Design` (Khớp Wireframe Mục 3.4), Thiết kế CSDL `9.Database-Design` (Khớp ERD Mục 3.2), Thiết kế API `17.ApiDesignDetail.xlsx` (Khớp Bảng 3.13), Kế hoạch kiểm thử `10.Testplan` và kịch bản `Testcase_Sprint_1/2/3.xlsx` (Khớp 22 ca kiểm thử Mục 4.3), Kết luận `15.KetLuan` (Khớp Chương 5).
+- **Kết quả/Đầu ra**:
+  - Tệp báo cáo toàn văn: [baocao_totnghiep_hoanchinh.md](file:///d:/Hieu/Test/doantotnghiep/baocao_totnghiep_hoanchinh.md)
+  - Tệp hướng dẫn ánh xạ biểu mẫu Khoa: [HO_SO_DO_AN_DUY_TAN.md](file:///d:/Hieu/Test/doantotnghiep/HO_SO_DO_AN_DUY_TAN.md)
+- **Dùng cho**: Nộp quyển báo cáo tốt nghiệp chính thức và chuẩn bị hồ sơ minh chứng theo đúng khung Agile/Scrum của Khoa CNTT — Đại học Duy Tân.
+
+
 
 
