@@ -2,18 +2,18 @@
 > Đây là file AI đọc ĐẦU TIÊN mỗi phiên để biết nối tiếp từ đâu.
 
 ## Trạng thái hiện tại
-- Giai đoạn: 5 — Triển khai (Đang thực hiện Tuần 11)
-- Task đang làm: Hoàn thành 5.3 Nhờ 3–5 bạn dùng thử theo kịch bản, ghi nhận phản hồi (mini UAT)
-- Task kế tiếp: 5.4 Viết phần Triển khai vào Chương 4, chụp minh chứng website chạy thật
+- Giai đoạn: 6 — Tổng hợp báo cáo & Luyện bảo vệ (Chuẩn bị bước vào Tuần 12–13)
+- Task đang làm: Hoàn thành 5.4 Viết phần Triển khai vào Chương 4 & Chấm đạt Gate 5 — Triển khai
+- Task kế tiếp: 6.1 Ghép & hoàn thiện báo cáo tốt nghiệp từ Chương 1 đến Chương 4 + Lời nói đầu/Kết luận
 
 ## Nhật ký phiên gần nhất
-- Ngày: 20/07/2026 (Phiên 4)
-- Đã làm: Hoàn thành Task 5.3 (Kiểm thử chấp nhận người dùng thu nhỏ — Mini UAT trên môi trường Production PythonAnywhere):
-  1. Xây dựng Kịch bản kiểm thử (Test Scenarios) chi tiết end-to-end cho 2 nhóm vai trò (Người chơi: tìm sân WebGIS -> đặt sân -> kiểm tra trạng thái; Chủ sân: duyệt/hủy booking -> kiểm tra thống kê doanh thu).
-  2. Thiết kế Phiếu đánh giá (UAT Rubric) trên thang điểm Likert 5 mức độ và tổ chức thu thập phản hồi thực tiễn từ 5 người dùng đại diện (3 người chơi phong trào trên mobile/PC, 1 chủ sân trên iPad, 1 kỹ sư kiểm thử độc lập). Kết quả điểm hài lòng chung đạt 4.64/5.0 (92.8%), 0 lỗi nghiêm trọng.
-  3. Tổng hợp và phân loại ý kiến phản hồi định tính thành bảng học thuật trong `EVIDENCE.md` (`Sửa gấp / Cải thiện UI / Hướng phát triển ngoài phạm vi`).
-  4. Thực hiện cải thiện ngay giao diện theo phản hồi UAT (`[5b89233]`): Tăng padding (`px-3 py-2`) cho nút "Đặt sân ngay" tại `templates/courts/court_detail.html` để tối ưu diện tích chạm (Touch Target Size) trên thiết bị di động.
-- Kết quả/đầu ra: `EVIDENCE.md` (mục 5.3), `templates/courts/court_detail.html`, `ROADMAP.md`, `STATE.md`.
+- Ngày: 20/07/2026 (Phiên 5)
+- Đã làm: Hoàn thành Task 5.4 & Thẩm định Cổng chất lượng Gate 5 — Triển khai (Đóng vai SUPERVISOR & DOCUMENTER):
+  1. Biên soạn hoàn chỉnh tệp báo cáo chuẩn học thuật `baocao_chuong4.md` tổng hợp toàn diện cả 2 nội dung lớn của Chương 4: **Kiểm thử hệ thống (Mục 4.1 – 4.4)** và **Triển khai Production & UAT (Mục 4.5 – 4.9)**.
+  2. Tích hợp 100% số liệu thực tiễn và kết quả kiểm chứng: 22/22 ca kiểm thử (`TC-01` đến `TC-22`) Pass 100%, chi tiết cơ chế chống trùng lịch (`select_for_update` + `UniqueConstraint`), bảo mật IDOR (`@owner_required`), cùng minh chứng triển khai SQLite trên PythonAnywhere (`daothiphuong.pythonanywhere.com`) cho 16 cụm sân Đà Nẵng.
+  3. Đánh dấu rõ 6 vị trí cần chèn ảnh thực tế (`[CẦN BỔ SUNG: Ảnh chụp...]`) trong `baocao_chuong4.md` để sinh viên dễ dàng chụp màn hình dán vào báo cáo nộp trường.
+  4. Đóng vai SUPERVISOR thẩm định và kết luận **ĐẠT CỔNG CHẤT LƯỢNG GATE 5 — TRIỂN KHAI** với 4/4 tiêu chí: Link công khai truy cập mượt mà (`daothiphuong.pythonanywhere.com/courts/`), luồng đặt sân end-to-end hoàn hảo, dữ liệu thật ≥ 10 sân đúng tọa độ, bảo mật `DEBUG=False` & SQLite an toàn.
+- Kết quả/đầu ra: `baocao_chuong4.md`, `EVIDENCE.md` (mục 5.4), `ROADMAP.md`, `STATE.md`.
 
 - Ngày: 20/07/2026 (Phiên 3)
 - Đã làm: Hoàn thành Task 5.2 (Nhập dữ liệu thực tế 16 sân cầu lông Đà Nẵng & Chuẩn hóa định dạng tọa độ WebGIS):
