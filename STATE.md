@@ -3,10 +3,17 @@
 
 ## Trạng thái hiện tại
 - Giai đoạn: 5 — Triển khai (Đang thực hiện Tuần 11)
-- Task đang làm: Hoàn thành 5.1 Deploy lên PythonAnywhere (SQLite, static/media, ALLOWED_HOSTS, DEBUG=False)
-- Task kế tiếp: 5.2 Nhập dữ liệu thật ≥ 10 sân Đà Nẵng (từ khảo sát 1.1)
+- Task đang làm: Hoàn thành 5.2 Nhập dữ liệu thật ≥ 10 sân Đà Nẵng từ khảo sát 1.1 và chuẩn hóa tọa độ WebGIS l10n
+- Task kế tiếp: 5.3 Nhờ 3–5 bạn dùng thử theo kịch bản, ghi nhận phản hồi (mini UAT)
 
 ## Nhật ký phiên gần nhất
+- Ngày: 20/07/2026 (Phiên 3)
+- Đã làm: Hoàn thành Task 5.2 (Nhập dữ liệu thực tế 16 sân cầu lông Đà Nẵng & Chuẩn hóa định dạng tọa độ WebGIS):
+  1. Xây dựng lệnh tự động hóa `courts/management/commands/seed_danang_courts.py` với cơ chế an toàn Idempotent và bọc mã hóa UTF-8 cho Console. Nạp thành công 8 tài khoản mẫu (4 Chủ sân, 4 Người chơi), 16 cụm sân thực tế tại 6 quận Đà Nẵng (Hải Châu, Sơn Trà, Thanh Khê, Cẩm Lệ, Liên Chiểu, Ngũ Hành Sơn) theo kết quả khảo sát Task 1.1 trong `EVIDENCE.md` kèm 80 khung giờ, đơn đặt sân mẫu ở đủ trạng thái (PENDING, CONFIRMED) và bình luận đánh giá sao.
+  2. Phân tích và khắc phục triệt để lỗi hiển thị tất cả các sân bị trùng khít về 1 vị trí (`[16.0000, 108.0000]`) trên bản đồ Leaflet. Nguyên nhân do `USE_L10N = True` khiến Django định dạng số thập phân thành dấu phẩy `,` (`16,064512`), làm hàm `parseFloat` của JavaScript cắt bỏ đuôi thập phân. Đã bổ sung `{% load l10n %}` và `|unlocalize` vào toàn bộ template (`court_detail.html`, `court_map.html`, `court_form.html`), đảm bảo tọa độ luôn xuất ra dấu chấm chuẩn quốc tế (`.`).
+  3. Đẩy code lên kho chứa GitHub chính thức (`0c44c52`, `2c1be00`), hướng dẫn sinh viên pull code và nghiệm thu thành công trên máy chủ Production PythonAnywhere.
+- Kết quả/đầu ra: `courts/management/commands/seed_danang_courts.py`, `templates/courts/court_detail.html`, `templates/courts/court_map.html`, `templates/courts/court_form.html`, `ROADMAP.md`, `STATE.md`, `EVIDENCE.md`.
+
 - Ngày: 20/07/2026 (Phiên 2)
 - Đã làm: Hoàn thành Task 5.1 (Deploy lên PythonAnywhere sử dụng CSDL SQLite):
   1. Phân tích chính sách mới từ 01/2026 của PythonAnywhere (cắt bỏ MySQL khỏi tài khoản miễn phí Beginner). Đề xuất và được sinh viên phê duyệt Phương án A (sử dụng `db.sqlite3` làm CSDL production trên PythonAnywhere, tiết kiệm chi phí $0/tháng). Ghi chốt quyết định vào `STATE.md` và `DEPLOY_PYTHONANYWHERE.md`.

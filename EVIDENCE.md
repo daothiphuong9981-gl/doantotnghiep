@@ -1122,3 +1122,15 @@ Từ các kết quả kiểm thử thực tiễn trên cả hai phương diện 
   - `[CẦN BỔ SUNG: Ảnh chụp màn hình website thực tế đang chạy công khai trên trình duyệt tại đường dẫn https://daothiphuong.pythonanywhere.com/courts/]`
   - `[CẦN BỔ SUNG: Ảnh chụp tab Web trên PythonAnywhere hiển thị cấu hình Virtualenv, WSGI file và Static/Media files của tài khoản daothiphuong]`
 - **Dùng cho**: Chương 4, Mục 4.11 (Triển khai hệ thống lên máy chủ thực tế PythonAnywhere và xử lý rào cản chính sách nền tảng) trong báo cáo tốt nghiệp.
+
+### [5.2] Nạp dữ liệu thực tế 16 cụm sân cầu lông Đà Nẵng và chuẩn hóa định dạng tọa độ WebGIS — 20/07/2026
+
+- **Hoạt động**:
+  - Xây dựng lệnh quản trị tự động `courts/management/commands/seed_danang_courts.py` có cơ chế Idempotent (không tạo trùng lặp khi chạy nhiều lần) và xử lý tương thích mã hóa UTF-8 cho Console. Lệnh khởi tạo sẵn 8 tài khoản mẫu (4 Chủ sân, 4 Người chơi) và nạp chính xác 16 cụm sân cầu lông thực tế tại 6 quận Đà Nẵng (Hải Châu, Sơn Trà, Thanh Khê, Cẩm Lệ, Liên Chiểu, Ngũ Hành Sơn) từ dữ liệu khảo sát thực địa Task 1.1 kèm 80 khung giờ (`50.000đ - 120.000đ/giờ`), đơn đặt sân mẫu và bình luận đánh giá sao.
+  - Phân tích và giải quyết triệt để lỗi hiển thị tất cả marker sân bị trùng khít về một vị trí (`[16.0000, 108.0000]`) trên WebGIS Leaflet. Nguyên nhân do Django tự động định dạng số thập phân theo chuẩn Việt Nam dùng dấu phẩy `,` (`USE_L10N = True`), khiến hàm `parseFloat` của JavaScript cắt bỏ phần thập phân. Đã bổ sung bộ lọc `{% load l10n %}` và `|unlocalize` vào toàn bộ template (`court_detail.html`, `court_map.html`, `court_form.html`) để đảm bảo tọa độ luôn xuất ra chuẩn dấu chấm quốc tế (`.` như `16.064512, 108.203125`).
+  - Đẩy lệnh nạp dữ liệu và bản vá lỗi định dạng tọa độ lên GitHub (`0c44c52`, `2c1be00`), nghiệm thu thực tế trên cả môi trường Local (`db.sqlite3`) và máy chủ Production PythonAnywhere.
+- **Minh chứng ảnh cần bổ sung vào báo cáo**:
+  - `[CẦN BỔ SUNG: Ảnh chụp màn hình bản đồ WebGIS công khai trên PythonAnywhere hiển thị chính xác 16 marker rải đều tại 6 quận thành phố Đà Nẵng]`
+  - `[CẦN BỔ SUNG: Ảnh chụp màn hình chi tiết sân Đào Duy Anh hoặc Nguyễn Tri Phương trên trình duyệt hiển thị bản đồ mini định vị chính xác thực địa]`
+- **Dùng cho**: Chương 4, Mục 4.12 (Nạp dữ liệu thực tiễn và chuẩn hóa bản đồ WebGIS trên môi trường Production) trong báo cáo tốt nghiệp.
+

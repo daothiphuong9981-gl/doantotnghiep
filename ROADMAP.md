@@ -76,7 +76,7 @@ Vai AI chính: Tester (sinh test từ ĐẶC TẢ, không từ code). Đầu ra 
 ---
 ## GIAI ĐOẠN 5 — TRIỂN KHAI (Tuần 11)
 - [x] 5.1 Deploy PythonAnywhere: SQLite (theo Quyết định đã duyệt 20/07/2026), static/media, ALLOWED_HOSTS, DEBUG=False
-- [ ] 5.2 Nhập dữ liệu thật ≥ 10 sân Đà Nẵng (từ khảo sát 1.1)
+- [x] 5.2 Nhập dữ liệu thật ≥ 10 sân Đà Nẵng (từ khảo sát 1.1)
 - [ ] 5.3 Nhờ 3–5 bạn dùng thử theo kịch bản, ghi nhận phản hồi (mini UAT)
 - [ ] 5.4 Viết phần Triển khai vào Chương 4, chụp minh chứng website chạy thật
 
