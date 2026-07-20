@@ -1,0 +1,324 @@
+{% extends 'base.html' %}
+
+{% block title %}Bản đồ Sân Cầu Lông Đà Nẵng{% endblock %}
+
+{% block extra_css %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<style>
+    #map {
+        height: 650px;
+        width: 100%;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        z-index: 1;
+    }
+    .court-sidebar {
+        height: 650px;
+        overflow-y: auto;
+    }
+    .court-card {
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .court-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12 d-flex justify-content-between align-items-center bg-white p-3 rounded shadow-sm">
+        <div>
+            <h3 class="fw-bold text-dark mb-1"><i class="fa-solid fa-map-location-dot text-primary me-2"></i>Tìm kiếm & Bản đồ WebGIS</h3>
+            <p class="text-muted mb-0 small">Tìm kiếm cụm sân gần nhất và lọc khung giờ trống theo thời gian thực</p>
+        </div>
+        <button id="btn-nearest" class="btn btn-primary fw-bold shadow-sm">
+            <i class="fa-solid fa-location-crosshairs me-1"></i> Tìm sân gần tôi nhất
+        </button>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Cột trái: Bộ lọc & Danh sách kết quả -->
+    <div class="col-lg-5 mb-4">
+        <!-- Form Tìm kiếm & Bộ lọc -->
+        <div class="bg-white p-3 rounded shadow-sm mb-3">
+            <form method="GET" action="{% url 'courts:court_map' %}" id="filter-form">
+                <div class="row g-2">
+                    <!-- Quận -->
+                    <div class="col-md-6">
+                        <label for="district" class="form-label small fw-bold text-muted mb-1">Quận / Huyện</label>
+                        <select name="district" id="district" class="form-select form-select-sm">
+                            <option value="">Tất cả quận/huyện</option>
+                            {% for d in districts %}
+                                <option value="{{ d }}" {% if request.GET.district == d %}selected{% endif %}>{{ d }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <!-- Giá tối đa -->
+                    <div class="col-md-6">
+                        <label for="max_price" class="form-label small fw-bold text-muted mb-1">Giá tối đa / giờ</label>
+                        <input type="number" name="max_price" id="max_price" class="form-control form-control-sm" placeholder="VD: 100000" value="{{ request.GET.max_price }}">
+                    </div>
+                    <!-- Ngày chơi -->
+                    <div class="col-12">
+                        <label for="date" class="form-label small fw-bold text-muted mb-1">Ngày chơi (Kiểm tra khung giờ trống)</label>
+                        <input type="date" name="date" id="date" class="form-control form-control-sm" value="{{ request.GET.date }}">
+                    </div>
+                </div>
+                <div class="d-flex gap-2 mt-3">
+                    <button type="submit" class="btn btn-sm btn-primary fw-bold px-3 flex-grow-1"><i class="fa-solid fa-magnifying-glass me-1"></i>Tìm kiếm</button>
+                    <a href="{% url 'courts:court_map' %}" class="btn btn-sm btn-outline-secondary fw-bold"><i class="fa-solid fa-arrow-rotate-left"></i> Reset</a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Sidebar Danh sách kết quả -->
+        <div class="bg-white p-3 rounded shadow-sm court-sidebar">
+            <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-list-ul text-primary me-2"></i>Kết quả tìm kiếm ({{ courts.count }} sân)</h5>
+            
+            {% if courts %}
+                <div class="d-flex flex-column gap-3">
+                    {% for court in courts %}
+                        <div class="card court-card border shadow-sm p-3" onclick="focusCourtOnMap({{ court.latitude }}, {{ court.longitude }}, '{{ court.name }}')">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="fw-bold text-dark mb-0">{{ court.name }}</h6>
+                                <span class="badge bg-primary fs-7">{{ court.district }}</span>
+                            </div>
+                            <p class="text-muted small mb-2"><i class="fa-solid fa-map-marker-alt text-danger me-1"></i>{{ court.address }}</p>
+                            
+                            <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
+                                <div>
+                                    <small class="text-muted d-block">Giá từ</small>
+                                    <span class="fw-bold text-success">
+                                        {% if court.min_price %}
+                                            {{ court.min_price|floatformat:0 }}đ<small class="text-muted">/giờ</small>
+                                        {% else %}
+                                            Chưa cập nhật
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                <div class="d-flex gap-1">
+                                    <button class="btn btn-sm btn-outline-secondary p-1 px-2 small" title="Định vị sân trên bản đồ">
+                                        <i class="fa-solid fa-location-dot"></i>
+                                    </button>
+                                    <a href="{% url 'courts:court_detail' court.pk %}" class="btn btn-sm btn-primary px-3 fw-bold text-white" onclick="event.stopPropagation();">
+                                        <i class="fa-solid fa-eye me-1"></i>Xem
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fa-solid fa-circle-exclamation text-warning fa-3x mb-3"></i>
+                    <p class="text-muted fw-bold mb-0">Không tìm thấy sân cầu lông phù hợp</p>
+                    <small class="text-muted">Vui lòng thử thay đổi các bộ lọc quận, giá hoặc ngày chơi khác.</small>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Cột phải: Bản đồ Leaflet -->
+    <div class="col-lg-7 mb-4">
+        <div id="map"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+    var map;
+    var markersMap = {}; // Lưu trữ marker theo ID để focus nhanh
+    var markersGroup;
+    var userMarker = null;
+    var nearestLine = null;
+
+    document.addEventListener("DOMContentLoaded", function() {
+        // Khởi tạo bản đồ Đà Nẵng mặc định
+        map = L.map('map').setView([16.0595, 108.212], 13);
+
+        // Nạp bản đồ nền OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors (ODbL)'
+        }).addTo(map);
+
+        markersGroup = L.featureGroup().addTo(map);
+
+        // Gọi API JSON kèm theo query string hiện tại trên thanh địa chỉ URL
+        var apiURL = "{% url 'courts:court_json_list' %}" + window.location.search;
+        
+        var courtsData = [];
+        
+        fetch(apiURL)
+            .then(response => response.json())
+            .then(data => {
+                courtsData = data;
+                drawMarkers(data);
+            })
+            .catch(error => {
+                console.error("Lỗi khi tải dữ liệu bản đồ:", error);
+            });
+
+        function drawMarkers(courts) {
+            markersGroup.clearLayers();
+            markersMap = {};
+            if (courts.length === 0) return;
+
+            courts.forEach(court => {
+                var priceText = court.min_price ? parseInt(court.min_price).toLocaleString('vi-VN') + "đ/giờ" : "Chưa cập nhật";
+                var popupHtml = `
+                    <div class="p-1">
+                        <h6 class="fw-bold text-dark mb-1">${court.name}</h6>
+                        <p class="text-muted small mb-2"><i class="fa-solid fa-map-marker-alt text-danger me-1"></i>${court.address}</p>
+                        <p class="text-success small mb-2 fw-semibold"><i class="fa-solid fa-tags me-1"></i>Giá từ: ${priceText}</p>
+                        <a href="${court.detail_url}" class="btn btn-primary btn-sm text-white w-100 fw-bold py-1">
+                            <i class="fa-solid fa-eye me-1"></i>Xem chi tiết
+                        </a>
+                    </div>
+                `;
+                
+                var marker = L.marker([court.latitude, court.longitude]);
+                marker.bindPopup(popupHtml);
+                markersGroup.addLayer(marker);
+                
+                // Lưu tham chiếu marker bằng key tọa độ kết hợp
+                var key = court.latitude + "_" + court.longitude;
+                markersMap[key] = marker;
+            });
+
+            // Tự động fit bounds theo các marker
+            map.fitBounds(markersGroup.getBounds().pad(0.1));
+        }
+
+        // Xử lý sự kiện bấm nút "Tìm sân gần tôi nhất"
+        document.getElementById('btn-nearest').addEventListener('click', function() {
+            if (!navigator.geolocation) {
+                alert("Trình duyệt không hỗ trợ định vị GPS.");
+                return;
+            }
+
+            var btn = this;
+            var originalHtml = btn.innerHTML;
+            btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Đang định vị...`;
+            btn.disabled = true;
+
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    var userLat = position.coords.latitude;
+                    var userLng = position.coords.longitude;
+                    
+                    // Giả lập tọa độ Đà Nẵng nếu vị trí thực tế nằm ngoài Đà Nẵng
+                    if (userLat < 15.5 || userLat > 16.5 || userLng < 107.5 || userLng > 108.5) {
+                        userLat = 16.0610; // Giả lập tại Hải Châu, Đà Nẵng
+                        userLng = 108.2180;
+                        console.log("Giả lập vị trí kiểm thử tại trung tâm Đà Nẵng.");
+                    }
+
+                    btn.innerHTML = originalHtml;
+                    btn.disabled = false;
+
+                    if (userMarker) map.removeLayer(userMarker);
+                    
+                    var redIcon = new L.Icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34],
+                        shadowSize: [41, 41]
+                    });
+
+                    userMarker = L.marker([userLat, userLng], {icon: redIcon}).addTo(map);
+                    userMarker.bindPopup("<b>Vị trí của bạn</b>").openPopup();
+
+                    if (courtsData.length === 0) {
+                        alert("Không tìm thấy sân cầu lông nào trong kết quả hiện tại để tính khoảng cách.");
+                        return;
+                    }
+
+                    var nearestCourt = null;
+                    var minDistance = Infinity;
+
+                    courtsData.forEach(court => {
+                        var dist = haversineDistance(userLat, userLng, court.latitude, court.longitude);
+                        if (dist < minDistance) {
+                            minDistance = dist;
+                            nearestCourt = court;
+                        }
+                    });
+
+                    if (nearestCourt) {
+                        if (nearestLine) map.removeLayer(nearestLine);
+                        nearestLine = L.polyline([
+                            [userLat, userLng],
+                            [nearestCourt.latitude, nearestCourt.longitude]
+                        ], {color: 'blue', weight: 3, dashArray: '5, 10'}).addTo(map);
+
+                        var key = nearestCourt.latitude + "_" + nearestCourt.longitude;
+                        var marker = markersMap[key];
+                        if (marker) {
+                            var bounds = L.latLngBounds([
+                                [userLat, userLng],
+                                [nearestCourt.latitude, nearestCourt.longitude]
+                            ]);
+                            map.fitBounds(bounds.pad(0.2));
+                            
+                            var priceText = nearestCourt.min_price ? parseInt(nearestCourt.min_price).toLocaleString('vi-VN') + "đ/giờ" : "Chưa cập nhật";
+                            var customPopupHtml = `
+                                <div class="p-1">
+                                    <span class="badge bg-success mb-1">GẦN NHẤT (${minDistance.toFixed(2)} km)</span>
+                                    <h6 class="fw-bold text-dark mb-1">${nearestCourt.name}</h6>
+                                    <p class="text-muted small mb-2"><i class="fa-solid fa-map-marker-alt text-danger me-1"></i>${nearestCourt.address}</p>
+                                    <p class="text-success small mb-2 fw-semibold"><i class="fa-solid fa-tags me-1"></i>Giá từ: ${priceText}</p>
+                                    <a href="${nearestCourt.detail_url}" class="btn btn-primary btn-sm text-white w-100 fw-bold py-1">
+                                        <i class="fa-solid fa-eye me-1"></i>Xem chi tiết
+                                    </a>
+                                </div>
+                            `;
+                            marker.bindPopup(customPopupHtml).openPopup();
+                        }
+                    }
+                },
+                function(error) {
+                    btn.innerHTML = originalHtml;
+                    btn.disabled = false;
+                    alert("Không thể lấy vị trí GPS: " + error.message);
+                }
+            );
+        });
+
+        function haversineDistance(lat1, lon1, lat2, lon2) {
+            var R = 6371;
+            var dLat = toRad(lat2 - lat1);
+            var dLon = toRad(lon2 - lon1);
+            var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        function toRad(value) {
+            return value * Math.PI / 180;
+        }
+    });
+
+    // Hàm click card ở sidebar focus vào marker bản đồ
+    function focusCourtOnMap(lat, lng, name) {
+        var key = lat + "_" + lng;
+        var marker = markersMap[key];
+        if (marker) {
+            map.setView([lat, lng], 15);
+            marker.openPopup();
+        }
+    }
+</script>
+{% endblock %}

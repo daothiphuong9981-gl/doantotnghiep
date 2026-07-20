@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+
+{% block title %}Quản lý Đặt Sân - Dashboard Chủ sân{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Cột bên trái hoặc thanh điều hướng phụ -->
+    <div class="col-12">
+        <nav aria-label="breadcrumb" class="mb-3">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'courts:manage_courts' %}" class="text-decoration-none">Dashboard Chủ sân</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Quản lý Đặt sân</li>
+          </ol>
+        </nav>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="fw-bold text-dark mb-0"><i class="fa-solid fa-list-check text-primary me-2"></i>Quản lý Đặt lịch Sân cầu lông</h3>
+            <a href="{% url 'courts:manage_courts' %}" class="btn btn-outline-secondary btn-sm fw-bold"><i class="fa-solid fa-circle-chevron-left me-1"></i>Về danh sách sân</a>
+        </div>
+
+        <!-- Thống kê doanh thu và đơn hàng -->
+        <div class="row mb-4">
+            <div class="col-md-6 mb-3 mb-md-0">
+                <div class="card border-0 shadow-sm bg-primary text-white h-100">
+                    <div class="card-body d-flex align-items-center justify-content-between p-4">
+                        <div>
+                            <h6 class="text-white-50 fw-bold text-uppercase mb-1 small">Doanh thu đã cọc (CONFIRMED)</h6>
+                            <h2 class="fw-bold mb-0">{{ total_revenue|floatformat:0 }}đ</h2>
+                        </div>
+                        <i class="fa-solid fa-coins fa-3x text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm bg-success text-white h-100">
+                    <div class="card-body d-flex align-items-center justify-content-between p-4">
+                        <div>
+                            <h6 class="text-white-50 fw-bold text-uppercase mb-1 small">Số lượt đặt thành công (CONFIRMED)</h6>
+                            <h2 class="fw-bold mb-0">{{ total_bookings }} lượt</h2>
+                        </div>
+                        <i class="fa-solid fa-calendar-check fa-3x text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bộ lọc Đặt sân -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-3">
+                <form method="GET" action="{% url 'bookings:owner_bookings' %}" class="row g-2 align-items-end">
+                    <!-- Lọc theo ngày -->
+                    <div class="col-md-4">
+                        <label for="filter-date" class="form-label small fw-bold text-muted mb-1">Ngày chơi</label>
+                        <input type="date" name="date" id="filter-date" class="form-control form-control-sm" value="{{ filter_date }}">
+                    </div>
+                    <!-- Lọc theo trạng thái -->
+                    <div class="col-md-4">
+                        <label for="filter-status" class="form-label small fw-bold text-muted mb-1">Trạng thái</label>
+                        <select name="status" id="filter-status" class="form-select form-select-sm">
+                            <option value="">Tất cả trạng thái</option>
+                            <option value="PENDING" {% if filter_status == 'PENDING' %}selected{% endif %}>Chờ duyệt cọc</option>
+                            <option value="CONFIRMED" {% if filter_status == 'CONFIRMED' %}selected{% endif %}>Đã cọc (Thành công)</option>
+                            <option value="CANCELLED" {% if filter_status == 'CANCELLED' %}selected{% endif %}>Đã hủy</option>
+                        </select>
+                    </div>
+                    <!-- Nút lọc -->
+                    <div class="col-md-4 d-flex gap-2">
+                        <button type="submit" class="btn btn-sm btn-primary fw-bold flex-grow-1"><i class="fa-solid fa-filter me-1"></i>Lọc dữ liệu</button>
+                        <a href="{% url 'bookings:owner_bookings' %}" class="btn btn-sm btn-outline-secondary fw-bold"><i class="fa-solid fa-arrow-rotate-left"></i> Reset</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Bảng danh sách booking -->
+        <div class="card border-0 shadow-sm border">
+            <div class="card-body p-0">
+                {% if bookings %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-3">Mã đơn</th>
+                                    <th>Cụm sân</th>
+                                    <th>Khách đặt</th>
+                                    <th>Số điện thoại</th>
+                                    <th>Ngày chơi</th>
+                                    <th>Khung giờ</th>
+                                    <th>Đơn giá</th>
+                                    <th>Trạng thái</th>
+                                    <th class="text-end pe-3">Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for b in bookings %}
+                                    <tr>
+                                        <td class="fw-bold ps-3">#{{ b.id }}</td>
+                                        <td><strong>{{ b.court.name }}</strong></td>
+                                        <td>{{ b.player.username }}</td>
+                                        <td>{{ b.player.phone_number }}</td>
+                                        <td>{{ b.date|date:"d/m/Y" }}</td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border">
+                                                {{ b.time_slot.start_time|time:"H:i" }} - {{ b.time_slot.end_time|time:"H:i" }}
+                                            </span>
+                                        </td>
+                                        <td class="fw-bold text-success">{{ b.total_price|floatformat:0 }}đ</td>
+                                        <td>
+                                            {% if b.status == 'PENDING' %}
+                                                <span class="badge bg-warning text-dark p-2"><i class="fa-solid fa-spinner fa-spin me-1"></i>Chờ duyệt cọc</span>
+                                            {% elif b.status == 'CONFIRMED' %}
+                                                <span class="badge bg-success p-2"><i class="fa-solid fa-circle-check me-1"></i>Đã cọc</span>
+                                            {% else %}
+                                                <span class="badge bg-danger p-2"><i class="fa-solid fa-circle-xmark me-1"></i>Đã hủy</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end pe-3">
+                                            <div class="d-flex justify-content-end gap-1">
+                                                {% if b.status == 'PENDING' %}
+                                                    <a href="{% url 'bookings:booking_approve' b.id %}" class="btn btn-sm btn-success fw-bold text-white shadow-sm" title="Xác nhận khách đã cọc tiền">
+                                                        <i class="fa-solid fa-circle-check"></i> Duyệt cọc
+                                                    </a>
+                                                    <a href="{% url 'bookings:booking_cancel_owner' b.id %}" class="btn btn-sm btn-outline-danger fw-bold" onclick="return confirm('Bạn có chắc chắn muốn hủy lịch đặt sân này không?');" title="Hủy đặt lịch">
+                                                        <i class="fa-solid fa-ban"></i> Hủy
+                                                    </a>
+                                                {% elif b.status == 'CONFIRMED' %}
+                                                    <a href="{% url 'bookings:booking_cancel_owner' b.id %}" class="btn btn-sm btn-outline-danger fw-bold" onclick="return confirm('Lịch đã được đặt cọc. Bạn có chắc chắn muốn hủy và hoàn tiền cọc không?');" title="Hủy đặt lịch và hoàn cọc">
+                                                        <i class="fa-solid fa-ban"></i> Hủy lịch
+                                                    </a>
+                                                {% else %}
+                                                    <span class="text-muted small">N/A</span>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fa-solid fa-calendar-xmark text-muted fa-3x mb-3"></i>
+                        <h5 class="text-muted fw-bold">Không tìm thấy yêu cầu đặt sân nào</h5>
+                        <p class="text-muted mb-0 small">Hiện tại các sân của bạn chưa có lịch đặt hoặc không khớp bộ lọc.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

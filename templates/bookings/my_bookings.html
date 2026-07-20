@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}Lịch sử Đặt Sân của Tôi{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb" class="mb-3">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'courts:court_map' %}" class="text-decoration-none">Bản đồ</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Lịch sử đặt sân</li>
+          </ol>
+        </nav>
+
+        <h3 class="fw-bold text-dark mb-4"><i class="fa-solid fa-clock-rotate-left text-primary me-2"></i>Lịch sử đặt sân của tôi</h3>
+        
+        {% if bookings %}
+            <div class="table-responsive bg-white p-3 rounded shadow-sm border">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Mã đặt sân</th>
+                            <th>Sân cầu lông</th>
+                            <th>Ngày chơi</th>
+                            <th>Khung giờ</th>
+                            <th>Tổng tiền</th>
+                            <th>Trạng thái</th>
+                            <th class="text-end">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for b in bookings %}
+                            <tr>
+                                <td class="fw-bold">#{{ b.id }}</td>
+                                <td>{{ b.court.name }}</td>
+                                <td>{{ b.date|date:"d/m/Y" }}</td>
+                                <td>
+                                    <span class="badge bg-light text-dark border p-2">
+                                        <i class="fa-regular fa-clock me-1 text-primary"></i>
+                                        {{ b.time_slot.start_time|time:"H:i" }} - {{ b.time_slot.end_time|time:"H:i" }}
+                                    </span>
+                                </td>
+                                <td class="fw-bold text-success">{{ b.total_price|floatformat:0 }}đ</td>
+                                <td>
+                                    {% if b.status == 'PENDING' %}
+                                        <span class="badge bg-warning text-dark p-2"><i class="fa-solid fa-spinner fa-spin me-1"></i>Chờ duyệt cọc</span>
+                                    {% elif b.status == 'CONFIRMED' %}
+                                        <span class="badge bg-success p-2"><i class="fa-solid fa-circle-check me-1"></i>Đã cọc (Thành công)</span>
+                                    {% else %}
+                                        <span class="badge bg-danger p-2"><i class="fa-solid fa-circle-xmark me-1"></i>Đã hủy</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if b.can_cancel %}
+                                        <a href="{% url 'bookings:booking_cancel_player' b.id %}" class="btn btn-sm btn-outline-danger fw-bold" onclick="return confirm('Bạn có chắc chắn muốn hủy lịch đặt sân này không?');">
+                                            <i class="fa-solid fa-ban me-1"></i>Hủy lịch
+                                        </a>
+                                    {% else %}
+                                        {% if b.status == 'CANCELLED' %}
+                                            <span class="text-muted small">Đã hủy</span>
+                                        {% else %}
+                                            <span class="text-muted small" title="Không thể hủy do lịch đã cọc và sát giờ chơi dưới 24 tiếng">Không thể hủy</span>
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="card border-0 shadow-sm text-center py-5">
+                <div class="card-body">
+                    <i class="fa-solid fa-calendar-xmark text-muted fa-3x mb-3"></i>
+                    <h5 class="text-muted fw-bold">Bạn chưa có lịch đặt sân nào</h5>
+                    <p class="text-muted mb-3 small">Hãy quay lại bản đồ trang chủ để chọn sân và khung giờ phù hợp.</p>
+                    <a href="{% url 'courts:court_map' %}" class="btn btn-primary fw-bold px-4 shadow-sm"><i class="fa-solid fa-map-location-dot me-1"></i>Đến Bản đồ WebGIS</a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

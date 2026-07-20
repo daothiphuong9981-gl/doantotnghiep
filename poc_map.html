@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PoC Bản đồ Sân Cầu Lông Đà Nẵng - WebGIS Leaflet</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Lexend', sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .main-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+        .sidebar {
+            width: 350px;
+            background: white;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.05);
+            z-index: 1000;
+        }
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        #map {
+            flex: 1;
+            height: 100%;
+        }
+        .court-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .court-card:hover {
+            border-color: #3b82f6;
+            background-color: #f8fafc;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .court-name {
+            font-weight: 600;
+            color: #1e293b;
+        }
+        .court-price {
+            font-size: 0.9rem;
+            color: #10b981;
+            font-weight: 500;
+        }
+        .btn-near {
+            background-color: #3b82f6;
+            color: white;
+            font-weight: 500;
+            border: none;
+            transition: all 0.2s ease;
+        }
+        .btn-near:hover {
+            background-color: #2563eb;
+            transform: scale(1.02);
+        }
+        /* Custom Popup Styling */
+        .leaflet-popup-content-wrapper {
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .popup-title {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 5px;
+            color: #1e3c72;
+        }
+        .popup-price {
+            color: #10b981;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<header class="d-flex justify-content-between align-items-center">
+    <div>
+        <h1 class="h4 mb-0 fw-bold">🏸 WebGIS Sân Cầu Lông Đà Nẵng</h1>
+        <small class="opacity-75">Bản thử nghiệm khả thi (Proof of Concept) - Leaflet & OpenStreetMap</small>
+    </div>
+    <span class="badge bg-success py-2 px-3">Giai đoạn 1 - Khảo sát</span>
+</header>
+
+<div class="main-container">
+    <div class="sidebar">
+        <div class="sidebar-content">
+            <div class="d-grid gap-2 mb-4">
+                <button id="btn-geolocation" class="btn btn-near py-2.5 shadow-sm">
+                    📍 Tìm sân gần tôi nhất
+                </button>
+            </div>
+            
+            <h5 class="fw-bold mb-3 text-secondary">Danh sách sân mẫu (Giả định)</h5>
+            <div id="court-list">
+                <!-- Data will be loaded via JS -->
+            </div>
+            
+            <div id="distance-result" class="alert alert-info mt-3 d-none">
+                <!-- Dynamic calculation result -->
+            </div>
+        </div>
+    </div>
+    
+    <div id="map"></div>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<!-- Bootstrap 5 Bundle JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // 1. Khởi tạo bản đồ canh giữa Đà Nẵng
+    const map = L.map('map').setView([16.0544, 108.2022], 13);
+
+    // 2. Thêm ô gạch bản đồ từ OpenStreetMap đúng chuẩn attribution ODbL
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors (ODbL)'
+    }).addTo(map);
+
+    // 3. Dữ liệu 5 sân cầu lông mẫu (Tọa độ giả định phục vụ demo)
+    const courtsData = [
+        {
+            id: 1,
+            name: "Sân cầu lông BetaEra (Mẫu)",
+            address: "273–275 Nguyễn Tri Phương, Hải Châu, Đà Nẵng",
+            lat: 16.0595,
+            lng: 108.2120,
+            price: "70.000đ - 100.000đ/giờ"
+        },
+        {
+            id: 2,
+            name: "Sân cầu lông Nguyễn Tri Phương (Mẫu)",
+            address: "458 Nguyễn Tri Phương, Hải Châu, Đà Nẵng",
+            lat: 16.0520,
+            lng: 108.2115,
+            price: "60.000đ - 90.000đ/giờ"
+        },
+        {
+            id: 3,
+            name: "Sân cầu lông Quân Khu 5 (Mẫu)",
+            address: "07 Duy Tân, Hải Châu, Đà Nẵng",
+            lat: 16.0505,
+            lng: 108.2160,
+            price: "80.000đ - 120.000đ/giờ"
+        },
+        {
+            id: 4,
+            name: "Sân cầu lông Số 4 Lê Duẩn (Mẫu)",
+            address: "04 Lê Duẩn, Hải Châu, Đà Nẵng",
+            lat: 16.0690,
+            lng: 108.2195,
+            price: "50.000đ - 80.000đ/giờ"
+        },
+        {
+            id: 5,
+            name: "Sân cầu lông Sơn Trà (Mẫu)",
+            address: "34 Hồ Nghinh, Sơn Trà, Đà Nẵng",
+            lat: 16.0695,
+            lng: 108.2360,
+            price: "60.000đ - 90.000đ/giờ"
+        }
+    ];
+
+    const markers = {};
+
+    // 4. Hiển thị danh sách sân lên Sidebar và vẽ marker lên bản đồ
+    const courtListEl = document.getElementById('court-list');
+    
+    courtsData.forEach(court => {
+        // Tạo marker
+        const marker = L.marker([court.lat, court.lng]).addTo(map);
+        
+        // Cấu hình Popup
+        const popupContent = `
+            <div class="popup-title">${court.name}</div>
+            <div class="text-muted small mb-1">📍 ${court.address}</div>
+            <div class="popup-price">💵 ${court.price}</div>
+            <button class="btn btn-sm btn-outline-primary w-100" onclick="bookingAlert('${court.name}')">
+                📅 Đặt sân (Demo Alert)
+            </button>
+        `;
+        marker.bindPopup(popupContent);
+        markers[court.id] = marker;
+
+        // Thêm vào danh sách sidebar
+        const card = document.createElement('div');
+        card.className = 'court-card';
+        card.innerHTML = `
+            <div class="court-name">${court.name}</div>
+            <div class="text-muted small my-1">📍 ${court.address}</div>
+            <div class="court-price">💵 ${court.price}</div>
+        `;
+        
+        // Khi click card trên sidebar -> bay đến marker và mở popup
+        card.addEventListener('click', () => {
+            map.setView([court.lat, court.lng], 15);
+            marker.openPopup();
+        });
+        
+        courtListEl.appendChild(card);
+    });
+
+    // Hàm gọi Alert khi nhấn đặt sân
+    function bookingAlert(name) {
+        alert(`[MÔ PHỎNG] Quy trình đặt sân tại "${name}" thành công! Hệ thống Django trong tương lai sẽ chống double-booking bằng transaction.`);
+    }
+
+    // 5. Tính khoảng cách Haversine giữa 2 điểm (tọa độ)
+    function haversineDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371; // Bán kính Trái Đất (km)
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = 
+            Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c; // Khoảng cách (km)
+    }
+
+    // 6. Xử lý Geolocation tìm sân gần nhất
+    let userLocationMarker = null;
+
+    document.getElementById('btn-geolocation').addEventListener('click', () => {
+        if (!navigator.geolocation) {
+            alert("Trình duyệt của bạn không hỗ trợ định vị Geolocation. Đang áp dụng vị trí giả lập!");
+            useFallbackLocation();
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const userLat = position.coords.latitude;
+                const userLng = position.coords.longitude;
+                findNearestCourt(userLat, userLng, "Vị trí thực tế của bạn");
+            },
+            (error) => {
+                console.warn("Lỗi định vị thực tế, kích hoạt vị trí giả lập: " + error.message);
+                // Vị trí giả lập tại Đà Nẵng (gần ngã tư Nguyễn Tri Phương - Nguyễn Hữu Thọ)
+                useFallbackLocation();
+            },
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        );
+    });
+
+    function useFallbackLocation() {
+        const fallbackLat = 16.0525;
+        const fallbackLng = 108.2045;
+        findNearestCourt(fallbackLat, fallbackLng, "Vị trí giả lập (Gần Sân bay Đà Nẵng)");
+    }
+
+    function findNearestCourt(userLat, userLng, locationType) {
+        // Vẽ marker định vị người dùng
+        if (userLocationMarker) {
+            map.removeLayer(userLocationMarker);
+        }
+        
+        userLocationMarker = L.circleMarker([userLat, userLng], {
+            radius: 10,
+            fillColor: "#ff4757",
+            color: "#ffffff",
+            weight: 3,
+            opacity: 1,
+            fillOpacity: 0.8
+        }).addTo(map).bindPopup(`<b>${locationType}</b>`).openPopup();
+
+        let nearestCourt = null;
+        let minDistance = Infinity;
+
+        // Tính toán khoảng cách
+        courtsData.forEach(court => {
+            const distance = haversineDistance(userLat, userLng, court.lat, court.lng);
+            court.distance = distance; // Lưu lại
+            
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearestCourt = court;
+            }
+        });
+
+        // Hiển thị kết quả lên Sidebar
+        const resultEl = document.getElementById('distance-result');
+        resultEl.className = "alert alert-success mt-3";
+        resultEl.innerHTML = `
+            <strong>📍 Tìm thấy sân gần nhất!</strong><br>
+            Sân: <b>${nearestCourt.name}</b><br>
+            Khoảng cách: <b>${minDistance.toFixed(2)} km</b><br>
+            <small class="text-muted">(${locationType})</small>
+        `;
+
+        // Di chuyển bản đồ đến sân gần nhất và mở popup
+        map.setView([nearestCourt.lat, nearestCourt.lng], 15);
+        markers[nearestCourt.id].openPopup();
+    }
+</script>
+</body>
+</html>

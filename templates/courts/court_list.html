@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}Quản lý Sân cầu lông - Sân Cầu Lông Đà Nẵng{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-table-tennis-paddle-ball text-primary me-2"></i>Sân cầu lông của tôi</h2>
+    <div class="d-flex gap-2">
+        <a href="{% url 'bookings:owner_bookings' %}" class="btn btn-warning shadow-sm fw-bold text-dark"><i class="fa-solid fa-list-check me-1"></i>Quản lý Đặt sân</a>
+        <a href="{% url 'courts:court_create' %}" class="btn btn-primary shadow-sm fw-bold"><i class="fa-solid fa-plus me-1"></i>Thêm sân mới</a>
+    </div>
+</div>
+
+{% if courts %}
+    <div class="row">
+        {% for court in courts %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card shadow-sm border-0 h-100">
+                    {% if court.images.exists %}
+                        <img src="{{ court.images.first.image.url }}" class="card-img-top rounded-top" alt="{{ court.name }}" style="height: 200px; object-fit: cover;">
+                    {% else %}
+                        <div class="bg-secondary text-white text-center d-flex flex-column justify-content-center align-items-center rounded-top" style="height: 200px;">
+                            <i class="fa-solid fa-image fa-3x mb-2 text-white-50"></i>
+                            <span class="text-white-50 small">Chưa tải ảnh sân lên</span>
+                        </div>
+                    {% endif %}
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold text-dark">{{ court.name }}</h5>
+                        <p class="card-text text-muted mb-2 small"><i class="fa-solid fa-map-marker-alt text-danger me-1"></i>{{ court.address }}, {{ court.district }}</p>
+                        <p class="card-text text-muted mb-2 small"><i class="fa-solid fa-phone text-success me-1"></i>Liên hệ: {{ court.owner.phone_number }}</p>
+                        <p class="card-text text-muted mb-2 small"><i class="fa-solid fa-clock text-info me-1"></i>Khung giờ mẫu: {{ court.slots.count }}</p>
+                    </div>
+                    <div class="card-footer bg-white border-0 d-flex justify-content-between pb-3">
+                        <a href="{% url 'courts:court_update' court.pk %}" class="btn btn-outline-primary btn-sm px-3 fw-bold"><i class="fa-solid fa-edit me-1"></i>Sửa thông tin</a>
+                        <a href="{% url 'courts:court_delete' court.pk %}" class="btn btn-outline-danger btn-sm px-3 fw-bold"><i class="fa-solid fa-trash me-1"></i>Xóa sân</a>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="card border-0 shadow-sm text-center py-5 my-4">
+        <div class="card-body">
+            <i class="fa-solid fa-folder-open text-muted fa-3x mb-3"></i>
+            <h4 class="text-muted fw-bold">Chưa có sân cầu lông nào</h4>
+            <p class="text-muted mb-4">Hãy thêm sân đầu tiên của bạn để hiển thị cho người dùng đặt lịch.</p>
+            <a href="{% url 'courts:court_create' %}" class="btn btn-primary fw-bold"><i class="fa-solid fa-plus me-1"></i>Thêm sân ngay</a>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

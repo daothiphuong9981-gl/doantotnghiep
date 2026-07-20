@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block title %}Đăng ký - Sân Cầu Lông Đà Nẵng{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow border-0 my-4">
+            <div class="card-body p-4 p-md-5">
+                <h3 class="text-center fw-bold mb-4 text-dark">
+                    <i class="fa-solid fa-user-plus text-primary me-2"></i>Đăng Ký Tài Khoản
+                </h3>
+                
+                <form method="post" class="needs-validation">
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    
+                    {% for field in form %}
+                        {% if field.name != 'data_privacy_consent' %}
+                        <div class="mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label fw-semibold">{{ field.label }}</label>
+                            {% if field.errors %}
+                                <div class="text-danger small mb-1">
+                                    {% for error in field.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            
+                            {% if field.name == 'role' %}
+                                <select name="role" id="id_role" class="form-select" required>
+                                    <option value="PLAYER">Người chơi (Tìm & đặt sân)</option>
+                                    <option value="OWNER">Chủ sân (Đăng & quản lý sân)</option>
+                                </select>
+                            {% elif field.name == 'password' or field.name == 'password1' or field.name == 'password2' %}
+                                <input type="password" name="{{ field.html_name }}" class="form-control" placeholder="Nhập {{ field.label|lower }}" required id="{{ field.id_for_label }}">
+                            {% else %}
+                                <input type="text" name="{{ field.html_name }}" class="form-control" placeholder="Nhập {{ field.label|lower }}" required id="{{ field.id_for_label }}" {% if field.value %}value="{{ field.value }}"{% endif %}>
+                            {% endif %}
+                            
+                            {% if field.help_text %}
+                                <div class="form-text text-muted small">{{ field.help_text|safe }}</div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+
+                    <!-- Khung thông báo Nghị định 13/2023/NĐ-CP -->
+                    <div class="alert alert-info border-info p-3 mb-4" style="font-size: 0.875rem;">
+                        <h6 class="fw-bold text-dark mb-2">
+                            <i class="fa-solid fa-shield-halved text-info me-1"></i> Thông báo về Xử lý Dữ liệu Cá nhân (NĐ 13/2023/NĐ-CP)
+                        </h6>
+                        <p class="mb-1 text-muted">Chúng tôi cam kết bảo mật dữ liệu của bạn. Khi đăng ký, thông tin của bạn được thu thập nhằm phục vụ:</p>
+                        <ul class="mb-2 ps-3 text-muted">
+                            <li><strong>Số điện thoại:</strong> Xác thực giao dịch và xử lý các sự cố trùng lịch hoặc thay đổi đột xuất.</li>
+                            <li><strong>Email:</strong> Nhận hóa đơn điện tử và thông báo trạng thái phê duyệt lịch từ chủ sân.</li>
+                            <li><strong>Quyền tài khoản:</strong> Đảm bảo phân luồng đúng vai trò người chơi hoặc chủ sân.</li>
+                        </ul>
+                        <div class="form-check">
+                            <input class="form-check-input border-secondary" type="checkbox" name="data_privacy_consent" id="data_privacy_consent">
+                            <label class="form-check-label fw-bold text-dark" for="data_privacy_consent">
+                                Tôi đã đọc và hoàn toàn đồng ý cho phép xử lý dữ liệu cá nhân theo các mục đích trên.
+                            </label>
+                            {% if form.data_privacy_consent.errors %}
+                                <div class="text-danger small mt-1 fw-bold">
+                                    {% for error in form.data_privacy_consent.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm">
+                        <i class="fa-solid fa-user-plus me-1"></i> Đăng ký tài khoản
+                    </button>
+                </form>
+                
+                <div class="text-center mt-4">
+                    <p class="mb-0 text-muted">Đã có tài khoản? <a href="{% url 'accounts:login' %}" class="text-primary text-decoration-none fw-bold">Đăng nhập ngay</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

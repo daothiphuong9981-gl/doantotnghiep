@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}Đăng nhập - Sân Cầu Lông Đà Nẵng{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow border-0 my-4">
+            <div class="card-body p-4 p-md-5">
+                <h3 class="text-center fw-bold mb-4 text-dark">
+                    <i class="fa-solid fa-key text-primary me-2"></i>Đăng Nhập
+                </h3>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="id_username" class="form-label fw-semibold">Tên đăng nhập</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light text-muted"><i class="fa-solid fa-user"></i></span>
+                            <input type="text" name="username" autofocus maxlength="150" class="form-control" placeholder="Nhập tên đăng nhập" required id="id_username">
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label for="id_password" class="form-label fw-semibold">Mật khẩu</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light text-muted"><i class="fa-solid fa-lock"></i></span>
+                            <input type="password" name="password" class="form-control" placeholder="Nhập mật khẩu" required id="id_password">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm">
+                        <i class="fa-solid fa-right-to-bracket me-1"></i> Đăng nhập
+                    </button>
+                </form>
+                <div class="text-center mt-4">
+                    <p class="mb-0 text-muted">Chưa có tài khoản? <a href="{% url 'accounts:register' %}" class="text-primary text-decoration-none fw-bold">Đăng ký ngay</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

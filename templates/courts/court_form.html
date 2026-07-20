@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - Sân Cầu Lông Đà Nẵng{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card shadow-sm border-0 my-4">
+            <div class="card-body p-4 p-md-5">
+                <h3 class="fw-bold mb-4 text-dark"><i class="fa-solid fa-table-tennis-paddle-ball text-primary me-2"></i>{{ title }}</h3>
+                <hr>
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <!-- Thông tin cụm sân -->
+                    <h5 class="fw-bold text-primary mb-3"><i class="fa-solid fa-circle-info me-1"></i>Thông tin cụm sân</h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_name" class="form-label fw-semibold">Tên cụm sân</label>
+                            {% if form.name.errors %}
+                                <div class="text-danger small mb-1">{{ form.name.errors }}</div>
+                            {% endif %}
+                            <input type="text" name="name" class="form-control" placeholder="Ví dụ: Cụm sân BetaEra" required id="id_name" value="{{ form.name.value|default:'' }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_district" class="form-label fw-semibold">Quận/Huyện</label>
+                            {% if form.district.errors %}
+                                <div class="text-danger small mb-1">{{ form.district.errors }}</div>
+                            {% endif %}
+                            <select name="district" id="id_district" class="form-select" required>
+                                <option value="Hải Châu" {% if form.district.value == 'Hải Châu' %}selected{% endif %}>Hải Châu</option>
+                                <option value="Thanh Khê" {% if form.district.value == 'Thanh Khê' %}selected{% endif %}>Thanh Khê</option>
+                                <option value="Liên Chiểu" {% if form.district.value == 'Liên Chiểu' %}selected{% endif %}>Liên Chiểu</option>
+                                <option value="Sơn Trà" {% if form.district.value == 'Sơn Trà' %}selected{% endif %}>Sơn Trà</option>
+                                <option value="Ngũ Hành Sơn" {% if form.district.value == 'Ngũ Hành Sơn' %}selected{% endif %}>Ngũ Hành Sơn</option>
+                                <option value="Cẩm Lệ" {% if form.district.value == 'Cẩm Lệ' %}selected{% endif %}>Cẩm Lệ</option>
+                                <option value="Hòa Vang" {% if form.district.value == 'Hòa Vang' %}selected{% endif %}>Hòa Vang</option>
+                            </select>
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label for="id_address" class="form-label fw-semibold">Địa chỉ cụ thể</label>
+                            {% if form.address.errors %}
+                                <div class="text-danger small mb-1">{{ form.address.errors }}</div>
+                            {% endif %}
+                            <input type="text" name="address" class="form-control" placeholder="Ví dụ: 273 Nguyễn Tri Phương" required id="id_address" value="{{ form.address.value|default:'' }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_latitude" class="form-label fw-semibold">Vĩ độ (Latitude)</label>
+                            {% if form.latitude.errors %}
+                                <div class="text-danger small mb-1">{{ form.latitude.errors }}</div>
+                            {% endif %}
+                            <input type="number" name="latitude" step="any" class="form-control" placeholder="Ví dụ: 16.0595" required id="id_latitude" value="{{ form.latitude.value|default:'' }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_longitude" class="form-label fw-semibold">Kinh độ (Longitude)</label>
+                            {% if form.longitude.errors %}
+                                <div class="text-danger small mb-1">{{ form.longitude.errors }}</div>
+                            {% endif %}
+                            <input type="number" name="longitude" step="any" class="form-control" placeholder="Ví dụ: 108.212" required id="id_longitude" value="{{ form.longitude.value|default:'' }}">
+                        </div>
+                        <div class="col-12 mb-4">
+                            <label for="id_description" class="form-label fw-semibold">Mô tả cụ thể sân</label>
+                            {% if form.description.errors %}
+                                <div class="text-danger small mb-1">{{ form.description.errors }}</div>
+                            {% endif %}
+                            <textarea name="description" cols="40" rows="3" class="form-control" placeholder="Nhập mô tả cụm sân, tiện ích, dịch vụ..." id="id_description">{{ form.description.value|default:'' }}</textarea>
+                        </div>
+                    </div>
+
+                    <!-- Quản lý hình ảnh sân -->
+                    <hr>
+                    <h5 class="fw-bold text-primary mb-3"><i class="fa-solid fa-image me-1"></i>Hình ảnh sân cầu lông (Tối đa 5MB/ảnh)</h5>
+                    {{ image_formset.management_form }}
+                    <div class="row">
+                        {% for img_form in image_formset %}
+                            <div class="col-md-6 mb-3 border-bottom pb-3">
+                                <label class="form-label fw-semibold">Hình ảnh #{{ forloop.counter }}</label>
+                                {{ img_form.id }}
+                                {% if img_form.image.errors %}
+                                    <div class="text-danger small mb-1">{{ img_form.image.errors }}</div>
+                                {% endif %}
+                                <div class="mb-2">
+                                    {{ img_form.image }}
+                                </div>
+                                {% if img_form.instance.pk %}
+                                    <div class="form-check text-danger mt-1">
+                                        {{ img_form.DELETE }}
+                                        <label class="form-check-label" for="{{ img_form.DELETE.id_for_label }}">Xóa ảnh này</label>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Quản lý Khung giờ và Giá thuê -->
+                    <hr>
+                    <h5 class="fw-bold text-primary mb-3"><i class="fa-solid fa-clock me-1"></i>Thiết lập Khung giờ chơi & Giá thuê mẫu</h5>
+                    {{ slot_formset.management_form }}
+                    <div class="row">
+                        {% for slot_form in slot_formset %}
+                            <div class="col-md-6 col-lg-4 mb-3 border p-3 rounded bg-white shadow-sm">
+                                <h6 class="fw-bold text-dark border-bottom pb-2">Khung giờ #{{ forloop.counter }}</h6>
+                                {{ slot_form.id }}
+                                {% if slot_form.non_field_errors %}
+                                    <div class="text-danger small mb-1">{{ slot_form.non_field_errors }}</div>
+                                {% endif %}
+                                <div class="mb-2">
+                                    <label class="form-label small fw-semibold">Giờ bắt đầu</label>
+                                    {% if slot_form.start_time.errors %}
+                                        <div class="text-danger small mb-1">{{ slot_form.start_time.errors }}</div>
+                                    {% endif %}
+                                    {{ slot_form.start_time }}
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small fw-semibold">Giờ kết thúc</label>
+                                    {% if slot_form.end_time.errors %}
+                                        <div class="text-danger small mb-1">{{ slot_form.end_time.errors }}</div>
+                                    {% endif %}
+                                    {{ slot_form.end_time }}
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small fw-semibold">Giá thuê (VND/giờ)</label>
+                                    {% if slot_form.price.errors %}
+                                        <div class="text-danger small mb-1">{{ slot_form.price.errors }}</div>
+                                    {% endif %}
+                                    {{ slot_form.price }}
+                                </div>
+                                {% if slot_form.instance.pk %}
+                                    <div class="form-check text-danger mt-2">
+                                        {{ slot_form.DELETE }}
+                                        <label class="form-check-label small" for="{{ slot_form.DELETE.id_for_label }}">Xóa khung giờ này</label>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mt-4 d-flex justify-content-between">
+                        <a href="{% url 'courts:manage_courts' %}" class="btn btn-secondary px-4 fw-bold"><i class="fa-solid fa-arrow-left me-1"></i>Hủy bỏ</a>
+                        <button type="submit" class="btn btn-primary px-5 fw-bold shadow-sm"><i class="fa-solid fa-floppy-disk me-1"></i>Lưu thông tin</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block title %}Trang cá nhân & Quản lý dữ liệu (NĐ 13/2023) - Sân Cầu Lông Đà Nẵng{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-9 col-xl-8">
+        <!-- Card Thông tin Tài khoản -->
+        <div class="card shadow border-0 mb-4">
+            <div class="card-header bg-dark text-white py-3 d-flex align-items-center justify-content-between">
+                <h5 class="mb-0 fw-bold"><i class="fa-solid fa-user-shield me-2 text-primary"></i>Hồ sơ cá nhân & Quyền dữ liệu NĐ 13/2023/NĐ-CP</h5>
+                <span class="badge bg-primary fs-6">{{ user.get_role_display }}</span>
+            </div>
+            <div class="card-body p-4 p-md-5">
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3 mb-md-0">
+                        <label class="form-label text-muted small fw-bold text-uppercase">Tên đăng nhập</label>
+                        <div class="fs-5 fw-bold text-dark">{{ user.username }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small fw-bold text-uppercase">Vai trò tài khoản</label>
+                        <div class="fs-5 fw-bold text-primary">{{ user.get_role_display }}</div>
+                    </div>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3 mb-md-0">
+                        <label class="form-label text-muted small fw-bold text-uppercase">Địa chỉ Email</label>
+                        <div class="fs-6 text-dark"><i class="fa-solid fa-envelope me-2 text-muted"></i>{{ user.email }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small fw-bold text-uppercase">Số điện thoại</label>
+                        <div class="fs-6 text-dark"><i class="fa-solid fa-phone me-2 text-muted"></i>{{ user.phone_number }}</div>
+                    </div>
+                </div>
+
+                <hr class="my-4 text-muted">
+
+                <!-- Khung giải thích pháp lý NĐ 13/2023/NĐ-CP -->
+                <h6 class="fw-bold text-dark mb-3">
+                    <i class="fa-solid fa-scale-balanced text-success me-2"></i>Cam kết tuân thủ Nghị định 13/2023/NĐ-CP về Bảo vệ Dữ liệu Cá nhân
+                </h6>
+                <div class="alert alert-light border p-3 mb-4" style="font-size: 0.9rem;">
+                    <p class="mb-2 text-dark">Theo Nghị định 13/2023/NĐ-CP của Chính phủ, quý khách có quyền kiểm soát hoàn toàn đối với dữ liệu cá nhân của mình khi sử dụng hệ thống Website cho thuê sân cầu lông Đà Nẵng:</p>
+                    <ul class="mb-0 ps-3 text-muted">
+                        <li class="mb-1"><strong>Nguyên tắc thu thập tối thiểu:</strong> Chúng tôi chỉ lưu trữ các thông tin bắt buộc gồm Tên đăng nhập, Email và Số điện thoại nhằm mục đích duy nhất là xác thực đặt sân, liên lạc giao dịch và thông báo lịch.</li>
+                        <li class="mb-1"><strong>Không chia sẻ bên thứ ba:</strong> Dữ liệu của bạn không bao giờ được chia sẻ, buôn bán hay tiết lộ cho bên thứ ba vì bất kỳ mục đích thương mại nào.</li>
+                        <li class="mb-1"><strong>Quyền được xóa dữ liệu (Right to be forgotten):</strong> Bạn có quyền yêu cầu xóa toàn bộ dữ liệu tài khoản hoạt động và lịch sử giao dịch khỏi hệ thống bất cứ lúc nào.</li>
+                    </ul>
+                </div>
+
+                <!-- Khu vực Xóa tài khoản -->
+                <div class="card border-danger bg-light">
+                    <div class="card-body p-4">
+                        <h6 class="fw-bold text-danger mb-2">
+                            <i class="fa-solid fa-triangle-exclamation me-2"></i>Khu vực nguy hiểm: Xóa tài khoản hoạt động
+                        </h6>
+                        <p class="text-muted small mb-3">
+                            Khi bạn thực hiện xóa tài khoản, toàn bộ thông tin cá nhân (email, số điện thoại) cũng như dữ liệu đặt sân liên quan sẽ bị xóa vĩnh viễn khỏi cơ sở dữ liệu. Hành động này không thể hoàn tác.
+                        </p>
+                        <button type="button" class="btn btn-outline-danger fw-bold" data-bs-toggle="modal" data-bs-target="#deleteAccountModal">
+                            <i class="fa-solid fa-trash-can me-1"></i>Yêu cầu xóa tài khoản (NĐ 13/2023)
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Xác nhận Xóa tài khoản -->
+<div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-labelledby="deleteAccountModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-danger">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title fw-bold" id="deleteAccountModalLabel">
+                    <i class="fa-solid fa-circle-exclamation me-2"></i>Xác nhận xóa tài khoản vĩnh viễn
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'accounts:delete_account' %}" method="post">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <p class="text-dark fw-semibold mb-2">Bạn có chắc chắn muốn xóa tài khoản <strong>{{ user.username }}</strong> không?</p>
+                    <p class="text-muted small mb-3">
+                        Thực hiện theo <strong>Điều 16 Nghị định 13/2023/NĐ-CP (Quyền xóa dữ liệu)</strong>, hệ thống sẽ gỡ bỏ hoàn toàn thông tin định danh của bạn khỏi cơ sở dữ liệu hoạt động.
+                    </p>
+                    <div class="form-check p-3 bg-light border rounded">
+                        <input class="form-check-input ms-0 me-2" type="checkbox" name="confirm_delete" id="confirm_delete" required>
+                        <label class="form-check-label fw-bold text-danger" for="confirm_delete">
+                            Tôi hiểu rằng hành động này không thể hoàn tác và đồng ý xóa vĩnh viễn dữ liệu cá nhân.
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy bỏ</button>
+                    <button type="submit" class="btn btn-danger fw-bold shadow-sm">
+                        <i class="fa-solid fa-check me-1"></i>Xác nhận xóa tài khoản
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
