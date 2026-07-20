@@ -2,18 +2,19 @@
 > Đây là file AI đọc ĐẦU TIÊN mỗi phiên để biết nối tiếp từ đâu.
 
 ## Trạng thái hiện tại
-- Giai đoạn: 4 — Kiểm thử & Hoàn thiện (ĐÃ HOÀN THÀNH - ĐẠT GATE 4) -> Chuẩn bị chuyển sang Giai đoạn 5 (Triển khai)
-- Task đang làm: Hoàn thành 4.5 Hoàn thiện UI & viết Chương 4 Kiểm thử
-- Task kế tiếp: 5.1 Deploy lên PythonAnywhere (MySQL, static/media, ALLOWED_HOSTS, DEBUG=False)
+- Giai đoạn: 5 — Triển khai (Đang thực hiện Tuần 11)
+- Task đang làm: Hoàn thành 5.1 Deploy lên PythonAnywhere (SQLite, static/media, ALLOWED_HOSTS, DEBUG=False)
+- Task kế tiếp: 5.2 Nhập dữ liệu thật ≥ 10 sân Đà Nẵng (từ khảo sát 1.1)
 
 ## Nhật ký phiên gần nhất
-- Ngày: 20/07/2026
-- Đã làm: Hoàn thành Task 4.5 (Hoàn thiện UI và Viết Chương 4 Kiểm thử):
-  1. Hoàn thiện đồng bộ UI Bootstrap 5: cấu hình ánh xạ thông báo lỗi `MESSAGE_TAGS` trong `config/settings.py` khớp với class `alert-danger` của Bootstrap; kiểm tra cấu trúc responsive trên `base.html`, `court_map.html` và các trang booking.
-  2. Rà soát, dọn dẹp lỗi dữ liệu trong `EVIDENCE.md` và cập nhật kết quả thực thi thực tế **ĐẠT (Pass/Unit Test)** cho toàn bộ 22/22 ca kiểm thử (100% pass, 0 lỗi nghiêm trọng).
-  3. Soạn thảo toàn văn bản thảo học thuật cho **Chương 4: Kiểm thử và Đánh giá hệ thống** trong `EVIDENCE.md` (bao gồm: Mục tiêu & phương pháp kiểm thử, Kịch bản & kết quả thực thi 4 nhóm nghiệp vụ trọng yếu, Thống kê 100% pass rate, và Nhận xét đánh giá độ tin cậy của hệ thống).
-  4. Hoàn tất toàn bộ tiêu chí của **GATE 4 (Cổng xuất xưởng)**. Tick hoàn thành Task 4.5 trong `ROADMAP.md`.
-- Kết quả/đầu ra: `config/settings.py`, `EVIDENCE.md`, `ROADMAP.md`, `STATE.md`.
+- Ngày: 20/07/2026 (Phiên 2)
+- Đã làm: Hoàn thành Task 5.1 (Deploy lên PythonAnywhere sử dụng CSDL SQLite):
+  1. Phân tích chính sách mới từ 01/2026 của PythonAnywhere (cắt bỏ MySQL khỏi tài khoản miễn phí Beginner). Đề xuất và được sinh viên phê duyệt Phương án A (sử dụng `db.sqlite3` làm CSDL production trên PythonAnywhere, tiết kiệm chi phí $0/tháng). Ghi chốt quyết định vào `STATE.md` và `DEPLOY_PYTHONANYWHERE.md`.
+  2. Cập nhật cấu hình `config/settings.py` (tự động đọc `.env`, logic chuyển đổi DB linh hoạt) và `requirements.txt` (định dạng UTF-8, bổ sung `python-dotenv`, `mysqlclient`, `PyMySQL`).
+  3. Hướng dẫn sinh viên đẩy code lên kho chứa GitHub chuẩn `main` (`https://github.com/daothiphuong9981-gl/doantotnghiep.git`), gộp lịch sử commit khởi tạo và xử lý thành công lỗi WSGI (`ModuleNotFoundError: No module named 'config'`).
+  4. Khắc phục lỗi hiển thị ô gạch bản đồ bị chặn (`403 Access Blocked - osm.wiki/Blocked`) bằng cách thêm `<meta name="referrer" content="strict-origin-when-cross-origin">` vào `base.html`, cập nhật `referrerPolicy` trong Leaflet (`court_map.html`, `court_detail.html`, `poc_map.html`), đồng thời tích hợp cơ chế tự động dự phòng sang máy chủ OpenStreetMap Germany (`tile.openstreetmap.de`).
+  5. Website vận hành thành công thực tế trên PythonAnywhere tại đường dẫn công khai `https://daothiphuong.pythonanywhere.com/courts/`. Tick hoàn thành Task 5.1 trong `ROADMAP.md`.
+- Kết quả/đầu ra: `config/settings.py`, `requirements.txt`, `DEPLOY_PYTHONANYWHERE.md`, `templates/base.html`, `templates/courts/court_map.html`, `templates/courts/court_detail.html`, `poc_map.html`, `ROADMAP.md`, `STATE.md`.
 
 - Ngày: 06/07/2026
 - Đã làm: Viết và chạy thử nghiệm thành công script Python `download_guidelines.py` để tải tài liệu Quy chuẩn dạng PDF từ trang Sau đại học ĐH Duy Tân. Tiếp tục viết và thực thi script `convert_pdf.py` sử dụng thư viện `pypdf` để chuyển đổi tệp PDF này sang định dạng `.txt` (văn bản thô) và `.md` (Markdown được tái cấu trúc phân cấp tiêu đề bằng regex).
