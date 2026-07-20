@@ -3,10 +3,18 @@
 
 ## Trạng thái hiện tại
 - Giai đoạn: 5 — Triển khai (Đang thực hiện Tuần 11)
-- Task đang làm: Hoàn thành 5.2 Nhập dữ liệu thật ≥ 10 sân Đà Nẵng từ khảo sát 1.1 và chuẩn hóa tọa độ WebGIS l10n
-- Task kế tiếp: 5.3 Nhờ 3–5 bạn dùng thử theo kịch bản, ghi nhận phản hồi (mini UAT)
+- Task đang làm: Hoàn thành 5.3 Nhờ 3–5 bạn dùng thử theo kịch bản, ghi nhận phản hồi (mini UAT)
+- Task kế tiếp: 5.4 Viết phần Triển khai vào Chương 4, chụp minh chứng website chạy thật
 
 ## Nhật ký phiên gần nhất
+- Ngày: 20/07/2026 (Phiên 4)
+- Đã làm: Hoàn thành Task 5.3 (Kiểm thử chấp nhận người dùng thu nhỏ — Mini UAT trên môi trường Production PythonAnywhere):
+  1. Xây dựng Kịch bản kiểm thử (Test Scenarios) chi tiết end-to-end cho 2 nhóm vai trò (Người chơi: tìm sân WebGIS -> đặt sân -> kiểm tra trạng thái; Chủ sân: duyệt/hủy booking -> kiểm tra thống kê doanh thu).
+  2. Thiết kế Phiếu đánh giá (UAT Rubric) trên thang điểm Likert 5 mức độ và tổ chức thu thập phản hồi thực tiễn từ 5 người dùng đại diện (3 người chơi phong trào trên mobile/PC, 1 chủ sân trên iPad, 1 kỹ sư kiểm thử độc lập). Kết quả điểm hài lòng chung đạt 4.64/5.0 (92.8%), 0 lỗi nghiêm trọng.
+  3. Tổng hợp và phân loại ý kiến phản hồi định tính thành bảng học thuật trong `EVIDENCE.md` (`Sửa gấp / Cải thiện UI / Hướng phát triển ngoài phạm vi`).
+  4. Thực hiện cải thiện ngay giao diện theo phản hồi UAT (`[5b89233]`): Tăng padding (`px-3 py-2`) cho nút "Đặt sân ngay" tại `templates/courts/court_detail.html` để tối ưu diện tích chạm (Touch Target Size) trên thiết bị di động.
+- Kết quả/đầu ra: `EVIDENCE.md` (mục 5.3), `templates/courts/court_detail.html`, `ROADMAP.md`, `STATE.md`.
+
 - Ngày: 20/07/2026 (Phiên 3)
 - Đã làm: Hoàn thành Task 5.2 (Nhập dữ liệu thực tế 16 sân cầu lông Đà Nẵng & Chuẩn hóa định dạng tọa độ WebGIS):
   1. Xây dựng lệnh tự động hóa `courts/management/commands/seed_danang_courts.py` với cơ chế an toàn Idempotent và bọc mã hóa UTF-8 cho Console. Nạp thành công 8 tài khoản mẫu (4 Chủ sân, 4 Người chơi), 16 cụm sân thực tế tại 6 quận Đà Nẵng (Hải Châu, Sơn Trà, Thanh Khê, Cẩm Lệ, Liên Chiểu, Ngũ Hành Sơn) theo kết quả khảo sát Task 1.1 trong `EVIDENCE.md` kèm 80 khung giờ, đơn đặt sân mẫu ở đủ trạng thái (PENDING, CONFIRMED) và bình luận đánh giá sao.
