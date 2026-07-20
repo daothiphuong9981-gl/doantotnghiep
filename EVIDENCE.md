@@ -1164,4 +1164,23 @@ Từ các kết quả kiểm thử thực tiễn trên cả hai phương diện 
   - `[CẦN BỔ SUNG: Ảnh chụp màn hình điện thoại (Mobile Screenshot) khi người dùng thao tác đặt sân và duyệt đơn thành công trên Production]`
 - **Dùng cho**: Chương 4, Mục 4.13 (Đánh giá chấp nhận người dùng thực tế - Mini UAT trên môi trường Production) trong báo cáo tốt nghiệp.
 
+### [5.4] Biên soạn hoàn chỉnh Chương 4 Báo cáo tốt nghiệp (Kiểm thử và Triển khai hệ thống) — 20/07/2026
+
+- **Hoạt động**:
+  - Biên soạn hoàn chỉnh tệp văn bản báo cáo chuẩn học thuật [baocao_chuong4.md](file:///d:/Hieu/Test/doantotnghiep/baocao_chuong4.md) tổng hợp trọn vẹn hai trụ cột kỹ thuật của đồ án: **Kiểm thử hệ thống (Mục 4.1 đến 4.4)** và **Triển khai ứng dụng thực tiễn & Kiểm thử người dùng trên Production (Mục 4.5 đến 4.9)**.
+  - Tích hợp 100% dữ liệu, kết quả thực thi và con số minh chứng THẬT từ toàn bộ 4 giai đoạn trước đó (`EVIDENCE.md` và `baocao_chuong3.md`):
+    - *Kiểm thử tự động & tích hợp*: Bảng thống kê 22 ca kiểm thử (`TC-01` đến `TC-22`) đạt tỷ lệ Pass 100%, chi tiết cơ chế khóa dòng chống trùng lịch (`select_for_update` + `UniqueConstraint`), bảo mật `@owner_required` chống IDOR và tuân thủ pháp lý theo Nghị định 13/2023/NĐ-CP cùng bản quyền ODbL OpenStreetMap.
+    - *Triển khai máy chủ Production*: Phân tích căn cứ chốt kiến trúc sử dụng **SQLite (`db.sqlite3`)** trên nền tảng **PythonAnywhere** (`daothiphuong.pythonanywhere.com`) cho tài khoản miễn phí ($0/tháng); cấu hình môi trường `.env`, WSGI, WhiteNoise phục vụ tệp tĩnh và tải lên hình ảnh.
+    - *Khắc phục rào cản kỹ thuật*: Sơ đồ quy trình 5 bước deploy chuẩn; giải trình chi tiết cách giải quyết lỗi từ chối truy cập bản đồ (`403 Referrer Blocked`) bằng thẻ meta `strict-origin-when-cross-origin`, `referrerPolicy: origin` và chuyển hướng sang máy chủ gương Đức `tile.openstreetmap.de`; cùng bản vá lỗi định dạng tọa độ địa phương hóa `|unlocalize` (`USE_L10N = True`).
+    - *Mini UAT trên Production*: Tổng hợp kịch bản kiểm thử cho Người chơi & Chủ sân, kết quả khảo sát Likert 5 tiêu chí từ 5 người dùng đại diện đạt **4.64/5.0 (92.8%)** điểm hài lòng, 0 lỗi block luồng và ghi nhận cải tiến diện tích chạm (`px-3 py-2`).
+- **Minh chứng ảnh cần bổ sung vào báo cáo (Đã đánh dấu rõ `[CẦN BỔ SUNG]` trong tệp `baocao_chuong4.md`)**:
+  - `[CẦN BỔ SUNG: Ảnh chụp tab Web trên PythonAnywhere hiển thị cấu hình Virtualenv, WSGI file và Static/Media files của tài khoản daothiphuong]`
+  - `[CẦN BỔ SUNG: Ảnh chụp màn hình bản đồ WebGIS công khai trên PythonAnywhere hiển thị chính xác 16 marker rải đều tại 6 quận thành phố Đà Nẵng]`
+  - `[CẦN BỔ SUNG: Ảnh chụp màn hình website thực tế đang chạy công khai trên trình duyệt tại đường dẫn https://daothiphuong.pythonanywhere.com/courts/]`
+  - `[CẦN BỔ SUNG: Ảnh chụp màn hình chi tiết sân Đào Duy Anh hoặc Nguyễn Tri Phương trên trình duyệt hiển thị bản đồ mini định vị chính xác thực địa]`
+  - `[CẦN BỔ SUNG: Ảnh chụp phiếu khảo sát/đánh giá thực tế (hoặc biểu đồ cột tổng hợp điểm Likert 5 tiêu chí từ 5 người dùng)]`
+  - `[CẦN BỔ SUNG: Ảnh chụp màn hình điện thoại (Mobile Screenshot) khi người dùng thao tác đặt sân và duyệt đơn thành công trên Production]`
+- **Dùng cho**: Hoàn thiện trực tiếp **Chương 4 — Kiểm thử và Triển khai hệ thống** trong Báo cáo tốt nghiệp (chuẩn bị bước vào Giai đoạn 6 - Tổng hợp báo cáo & Bảo vệ).
+
+
 
