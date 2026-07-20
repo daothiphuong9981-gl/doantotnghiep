@@ -1110,13 +1110,15 @@ Từ các kết quả kiểm thử thực tiễn trên cả hai phương diện 
 
 ## Giai đoạn 5 — Triển khai
 
-### [5.1] Triển khai Production lên PythonAnywhere (MySQL & WebGIS) — 20/07/2026
+### [5.1] Triển khai Production lên PythonAnywhere (SQLite & WebGIS) — 20/07/2026
 
 - **Hoạt động**:
-  - Chuẩn hóa cấu hình `config/settings.py`: tách biệt an toàn giữa dev (SQLite) và production (MySQL) thông qua biến môi trường (`os.getenv('DB_NAME')`); cấu hình `DEBUG = False`, `ALLOWED_HOSTS`, và `CSRF_TRUSTED_ORIGINS` cho tên miền `.pythonanywhere.com`.
-  - Chuẩn hóa danh sách phụ thuộc `requirements.txt` (định dạng UTF-8), bổ sung `python-dotenv`, `mysqlclient`, `PyMySQL` và thu thập toàn bộ tệp tĩnh tĩnh (`collectstatic`) vào `staticfiles`.
-  - Tạo tài liệu cẩm nang từng bước [DEPLOY_PYTHONANYWHERE.md](file:///d:/Hieu/Test/doantotnghiep/DEPLOY_PYTHONANYWHERE.md) hướng dẫn thiết lập virtualenv Python 3.10, cấu hình file `.env` bảo mật trên server, khởi tạo MySQL và cấu hình WSGI file trên PythonAnywhere.
+  - Phân tích và điều chỉnh chiến lược triển khai theo Quyết định đã duyệt ngày 20/07/2026 trong `STATE.md`: Chuyển sang sử dụng **SQLite (`db.sqlite3`)** làm CSDL Production trên tài khoản Beginner miễn phí ($0/tháng) của PythonAnywhere do chính sách mới từ 01/2026 cắt bỏ quyền truy cập MySQL khỏi gói miễn phí. Cấu hình `config/settings.py` tự động nhận diện và nạp `.env` (`SECRET_KEY`, `DEBUG=False`, `ALLOWED_HOSTS=daothiphuong.pythonanywhere.com`).
+  - Chuẩn hóa danh sách phụ thuộc `requirements.txt` (UTF-8, bổ sung `python-dotenv`, `mysqlclient`, `PyMySQL`), hoàn thiện cẩm nang hướng dẫn [DEPLOY_PYTHONANYWHERE.md](file:///d:/Hieu/Test/doantotnghiep/DEPLOY_PYTHONANYWHERE.md), gộp lịch sử commit và đẩy mã nguồn lên kho chứa GitHub chính thức (`https://github.com/daothiphuong9981-gl/doantotnghiep.git`).
+  - Hướng dẫn sinh viên thiết lập virtualenv Python 3.10 trên Bash Console, thu thập static files (`collectstatic`), tạo superuser và xử lý thành công lỗi cấu hình WSGI (`ModuleNotFoundError: No module named 'config'`).
+  - Khắc phục lỗi hiển thị ô gạch bản đồ (`403 Access Blocked - osm.wiki/Blocked`) bằng cách bổ sung `<meta name="referrer" content="strict-origin-when-cross-origin">` vào `base.html`, cấu hình `referrerPolicy` trong Leaflet (`court_map.html`, `court_detail.html`, `poc_map.html`), đồng thời tích hợp cơ chế tự động chuyển đổi sang máy chủ bản đồ dự phòng **OpenStreetMap Germany (`tile.openstreetmap.de`)**.
+  - Website đã chính thức vận hành mượt mà, ổn định trên máy chủ thực tế PythonAnywhere tại đường dẫn công khai: `https://daothiphuong.pythonanywhere.com/courts/`.
 - **Minh chứng ảnh cần bổ sung vào báo cáo**:
-  - `[CẦN BỔ SUNG: Ảnh chụp màn hình website thực tế đang chạy công khai trên trình duyệt với đường dẫn https://yourusername.pythonanywhere.com]`
-  - `[CẦN BỔ SUNG: Ảnh chụp tab Web trên PythonAnywhere hiển thị cấu hình Virtualenv, WSGI file và Static/Media files]`
-- **Dùng cho**: Chương 4, Mục 4.11 (Triển khai hệ thống lên máy chủ thực tế PythonAnywhere) trong báo cáo tốt nghiệp.
+  - `[CẦN BỔ SUNG: Ảnh chụp màn hình website thực tế đang chạy công khai trên trình duyệt tại đường dẫn https://daothiphuong.pythonanywhere.com/courts/]`
+  - `[CẦN BỔ SUNG: Ảnh chụp tab Web trên PythonAnywhere hiển thị cấu hình Virtualenv, WSGI file và Static/Media files của tài khoản daothiphuong]`
+- **Dùng cho**: Chương 4, Mục 4.11 (Triển khai hệ thống lên máy chủ thực tế PythonAnywhere và xử lý rào cản chính sách nền tảng) trong báo cáo tốt nghiệp.
