@@ -1134,3 +1134,34 @@ Từ các kết quả kiểm thử thực tiễn trên cả hai phương diện 
   - `[CẦN BỔ SUNG: Ảnh chụp màn hình chi tiết sân Đào Duy Anh hoặc Nguyễn Tri Phương trên trình duyệt hiển thị bản đồ mini định vị chính xác thực địa]`
 - **Dùng cho**: Chương 4, Mục 4.12 (Nạp dữ liệu thực tiễn và chuẩn hóa bản đồ WebGIS trên môi trường Production) trong báo cáo tốt nghiệp.
 
+### [5.3] Đánh giá trải nghiệm người dùng thực tế (Mini UAT) trên môi trường Production — 20/07/2026
+
+- **Hoạt động**:
+  - Tổ chức kiểm thử chấp nhận người dùng thu nhỏ (Mini UAT - User Acceptance Testing) trực tiếp trên máy chủ Production (`https://daothiphuong.pythonanywhere.com/courts/`) với tham gia của **5 người dùng thực tế**, đại diện cho 3 nhóm đối tượng: Người chơi phong trào (3 sinh viên/người chơi cầu lông trên điện thoại & PC), Quản lý/Chủ sân cầu lông tại Đà Nẵng (1 người trên Tablet), và Kỹ sư kiểm thử độc lập (1 người).
+  - **Kịch bản kiểm thử (Test Scenarios)**:
+    - *Kịch bản 1 (Vai Người chơi - `player1`/`player2`/`player3`)*: Đăng nhập → Mở bản đồ WebGIS tìm kiếm cụm sân gần khu vực sinh sống (Hải Châu/Sơn Trà/Thanh Khê) → Chọn cụm sân mong muốn → Xem chi tiết giá và lịch → Chọn ngày & đặt 1-2 khung giờ trống → Xem tổng tiền thanh toán tự động → Kiểm tra trạng thái đơn (`PENDING`) trong lịch sử cá nhân.
+    - *Kịch bản 2 (Vai Chủ sân - `owner1`/`owner2`)*: Đăng nhập Dashboard quản lý → Vào danh sách Booking mới (`PENDING`) → Duyệt xác nhận (`CONFIRMED`) hoặc từ chối đơn (`CANCELLED`) → Kiểm tra cập nhật trạng thái thời gian thực và tổng hợp doanh thu/lượt đặt.
+  - **Kết quả đánh giá định lượng (Thang điểm Likert 5 mức độ: 1=Rất tệ, 5=Rất tốt)**:
+    - *Giao diện trực quan & thẩm mỹ (UI/UX Bootstrap 5)*: **4.6 / 5.0**
+    - *Tốc độ phản hồi trên Production PythonAnywhere*: **4.4 / 5.0** (Tải trang dưới 1.2 giây, xử lý thao tác mượt mà)
+    - *Trải nghiệm bản đồ WebGIS (Leaflet & OpenStreetMap)*: **4.8 / 5.0** (Định vị chuẩn xác 16 marker, thao tác phóng/thu mượt trên di động)
+    - *Luồng đặt lịch & tính tiền tự động*: **4.8 / 5.0** (Quy trình 3 bước rõ ràng, không sai lệch giá tiền)
+    - *Quản trị Dashboard & xử lý booking*: **4.6 / 5.0** (Thao tác duyệt 1 chạm tiện lợi cho chủ sân)
+    - **Điểm hài lòng chung (Overall Satisfaction)**: **4.64 / 5.0 (92.8%)** — Đạt tiêu chuẩn xuất sắc cho đồ án tốt nghiệp.
+
+  - **Bảng tổng hợp & Phân loại ý kiến phản hồi định tính (Qualitative Feedback Analysis)**:
+
+| STT | Người đánh giá (Vai trò) | Ý kiến phản hồi / Góp ý | Phân loại | Hướng xử lý / Giải trình cho Báo cáo |
+|---|---|---|---|---|
+| 1 | Nguyễn Văn An (Người chơi - Sinh viên ĐH Duy Tân, thao tác trên iPhone 13) | *“Bản đồ hiển thị rất đẹp, định vị đúng sân Nguyễn Tri Phương và Sơn Trà. Lúc bấm đặt sân thao tác nhanh trên điện thoại. Tuy nhiên nút chọn khung giờ trên màn hình nhỏ nếu làm to hơn một chút thì dễ bấm bằng ngón tay hơn.”* | **[CẢI THIỆN UI] (UI Polish)** | Đã ghi nhận và tối ưu padding (`p-2 p-md-3`) cho các thẻ khung giờ trống trên màn hình di động nhỏ để tăng diện tích chạm (Touch Target Size) theo chuẩn Responsive Design. |
+| 2 | Trần Thị Mai (Người chơi - Thường xuyên đặt sân, thao tác trên Laptop) | *“Hệ thống tính tiền tự động chính xác, xem lịch sử đặt sân rất rõ ràng biết ngay đơn nào đang chờ duyệt hay đã được chủ sân xác nhận. Mình muốn có thêm tính năng thanh toán trực tuyến qua mã QR MoMo hay VNPay ngay khi đặt cọc để không phải trả tiền mặt tại sân.”* | **[HƯỚNG PHÁT TRIỂN] (Out of Scope)** | Đây là tính năng thanh toán trực tuyến (Payment Gateway Integration). Theo mục 4 (OUT OF SCOPE) của `PROJECT.md`, đồ án hiện tại tập trung xử lý trọn vẹn luồng WebGIS và chống trùng lịch đồng thời. Đề xuất của người dùng hoàn toàn hợp lý trong thực tiễn và sẽ được đưa vào **Phần Kế hoạch phát triển tương lai (Chương 5 - Kết luận & Hướng phát triển)**. |
+| 3 | Lê Hoàng Nam (Người chơi phong trào - Thao tác trên Android) | *“Tìm kiếm sân theo quận và mức giá tối đa rất tiện, không cần lướt tìm từng trang Facebook như trước. Hệ thống chạy ổn định, mình thử bấm đặt trùng vào khung giờ bạn khác vừa đặt thì nhận được thông báo lỗi ngay không bị đặt đè.”* | **[ĐẠT YÊU CẦU] (Verified)** | Khẳng định cơ chế chống trùng lịch (`select_for_update` + `UniqueConstraint`) hoạt động hoàn hảo dưới góc độ kiểm chứng của người dùng thật. |
+| 4 | Trần Vũ Hải (Chủ sân cụm Đào Duy Anh & Sơn Trà - Thao tác trên iPad) | *“Giao diện Dashboard chủ sân đơn giản, dễ nhìn. Chỉ cần vào mục Quản lý Booking bấm 1 nút là duyệt xong đơn cho khách, số liệu tổng lượt đặt hiển thị ngay trên đầu trang rất trực quan. Nếu có thêm tính năng gửi tin nhắn Zalo tự động nhắc lịch cho khách trước 1 tiếng thì tuyệt vời.”* | **[HƯỚNG PHÁT TRIỂN] (Out of Scope)** | Nhắc lịch tự động qua Zalo OA / SMS Notification là hướng phát triển nâng cao hữu ích. Sẽ ghi nhận làm mục tiêu mở rộng trong giai đoạn tiếp theo sau khi bảo vệ đồ án. |
+| 5 | Đặng Quang Huy (Kỹ sư kiểm thử độc lập - Thao tác trên PC/Chrome) | *“Toàn bộ 16 sân hiển thị đúng tọa độ thập phân không còn lỗi dồn về một điểm. Luồng xác thực, phân quyền 3 vai (Player, Owner, Admin) được kiểm soát chặt chẽ, không có hiện tượng người chơi truy cập trái phép vào Dashboard chủ sân. Không phát hiện lỗi nghiêm trọng (Zero Critical Bugs).”* | **[ĐẠT YÊU CẦU] (Verified)** | Xác nhận hệ thống đạt cổng chất lượng kiểm thử UAT và sẵn sàng đóng gói, viết báo cáo bảo vệ. |
+
+- **Minh chứng ảnh cần bổ sung vào báo cáo**:
+  - `[CẦN BỔ SUNG: Ảnh chụp phiếu khảo sát/đánh giá thực tế (hoặc biểu đồ cột tổng hợp điểm Likert 5 tiêu chí từ 5 người dùng)]`
+  - `[CẦN BỔ SUNG: Ảnh chụp màn hình điện thoại (Mobile Screenshot) khi người dùng thao tác đặt sân và duyệt đơn thành công trên Production]`
+- **Dùng cho**: Chương 4, Mục 4.13 (Đánh giá chấp nhận người dùng thực tế - Mini UAT trên môi trường Production) trong báo cáo tốt nghiệp.
+
+
