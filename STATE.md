@@ -32,7 +32,7 @@
 | | | | Chờ duyệt |
 
 ## Quyết định đã duyệt trong quá trình làm (bổ sung cho PROJECT.md)
-- (trống)
+- [20/07/2026] **Quyết định chốt CSDL Production trên PythonAnywhere**: Sử dụng **SQLite (`db.sqlite3`)** thay cho MySQL đối với tài khoản Beginner miễn phí ($0/tháng) trên PythonAnywhere (do chính sách từ 01/2026 của PythonAnywhere cắt bỏ MySQL khỏi gói miễn phí tạo mới). SQLite đáp ứng trọn vẹn yêu cầu kiểm thử đồng thời (`select_for_update` + `UniqueConstraint`) và không phát sinh chi phí duy trì.
 
 ---
 ### Mẫu prompt MỞ ĐẦU mỗi phiên (copy dùng):
