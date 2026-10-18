@@ -1,0 +1,5 @@
+# Lưu mã nguồn với kiểu xuống dòng LF trên GitHub
+* text=auto eol=lf
+*.jpg binary
+*.png binary
+*.pdf binary

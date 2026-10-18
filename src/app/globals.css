@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-brand-50: #f0fdfa;
+  --color-brand-100: #ccfbf1;
+  --color-brand-200: #99f6e4;
+  --color-brand-600: #0d9488;
+  --color-brand-700: #0f766e;
+  --color-brand-800: #115e59;
+  --color-brand-900: #134e4a;
+  --font-sans: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+body {
+  background: #f6f8f7;
+  color: #0f172a;
+  font-family: var(--font-sans);
+}
+
+/* Nhãn giá trên bản đồ */
+.price-pin {
+  background: #0f766e;
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  border: 2px solid #fff;
+  border-radius: 13px;
+  padding: 3px 10px;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.25);
+  transform: translate(-50%, -100%);
+  display: inline-block;
+}
+.price-pin.active {
+  background: #f59e0b;
+  transform: translate(-50%, -100%) scale(1.12);
+}
+.price-pin {
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+/* Số sân còn trống ở khung giờ đang lọc */
+.price-pin em {
+  font-style: normal;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: #fff;
+  color: #0f766e;
+  font-size: 11px;
+}
+.price-pin.active em {
+  color: #b45309;
+}
+/* Cụm nhiều sân ở mức zoom xa */
+.cluster-pin {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 46px;
+  height: 46px;
+  padding: 0 8px;
+  border-radius: 23px;
+  background: rgb(15 118 110 / 0.92);
+  color: #fff;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 5px rgb(15 118 110 / 0.25), 0 2px 6px rgb(0 0 0 / 0.25);
+  transform: translate(-50%, -50%);
+  line-height: 1.05;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cluster-pin b {
+  font-size: 15px;
+}
+.cluster-pin small {
+  font-size: 10px;
+  opacity: 0.9;
+}
+/* Thẻ xem nhanh khi bấm vào sân trên bản đồ */
+.leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  padding: 0;
+}
+.leaflet-popup-content {
+  margin: 12px;
+  font-family: var(--font-sans);
+}
+.me-pin {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #3b82f6;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 6px rgb(59 130 246 / 0.2);
+}

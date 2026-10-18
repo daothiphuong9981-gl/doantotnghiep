@@ -1,0 +1,41 @@
+{
+  "name": "caulong-danang",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test:db": "node supabase/tests/rls-sprint1.test.mjs && node supabase/tests/bookings-sprint2.test.mjs && node supabase/tests/admin-sprint3.test.mjs && node supabase/tests/notifications.test.mjs && node supabase/tests/import-san.test.mjs && node supabase/tests/demo-data.test.mjs",
+    "test:unit": "node tests/ai/filter.test.mjs",
+    "test:ai": "node tests/ai/eval.mjs",
+    "postinstall": "node scripts/copy-maplibre-worker.mjs"
+  },
+  "dependencies": {
+    "@maplibre/maplibre-gl-leaflet": "^0.1.4",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.117.3",
+    "leaflet": "^1.9.4",
+    "maplibre-gl": "^6.14.0",
+    "next": "16.4.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-leaflet": "^5.0.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@electric-sql/pglite-postgis": "^0.2.8",
+    "@tailwindcss/turbopack": "^4",
+    "@types/leaflet": "^1.9.22",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

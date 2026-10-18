@@ -1,0 +1,22 @@
+[
+  { "q": "Tìm sân gần Hải Châu tối thứ bảy này dưới 80 nghìn một giờ", "expect": { "ward": "Phường Hải Châu", "date": "sat", "time_from": "18:00", "time_to": "22:00", "max_price": 80000 } },
+  { "q": "Sân ở Sơn Trà sáng mai", "expect": { "ward": "Phường Sơn Trà", "date": "tomorrow", "time_from": "05:00", "time_to": "11:00" } },
+  { "q": "tối nay còn sân nào ở Thanh Khê không", "expect": { "ward": "Phường Thanh Khê", "date": "today", "time_to": "22:00" } },
+  { "q": "sân cầu lông giá dưới 60k", "expect": { "max_price": 60000 } },
+  { "q": "Cho mình sân ở Ngũ Hành Sơn chiều chủ nhật", "expect": { "ward": "Phường Ngũ Hành Sơn", "date": "sun", "time_from": "13:00", "time_to": "18:00" } },
+  { "q": "sân gần tôi nhất", "location": true, "expect": { "near_me": true } },
+  { "q": "tìm sân trong bán kính 3 km quanh đây tối mai", "location": true, "expect": { "near_me": true, "radius_km": 3, "date": "tomorrow", "time_from": "18:00", "time_to": "22:00" } },
+  { "q": "Sân nào ở Cẩm Lệ lúc 7 giờ tối thứ sáu", "expect": { "ward": "Phường Cẩm Lệ", "date": "fri", "time_from": "19:00", "time_to": "20:00" } },
+  { "q": "san o lien chieu gia tu 50 den 100 nghin", "expect": { "ward": "Phường Liên Chiểu", "min_price": 50000, "max_price": 100000 } },
+  { "q": "Có sân nào tên Sông Hàn không", "expect": { "keyword": "Sông Hàn" } },
+  { "q": "cuối tuần này muốn đánh cầu ở Hòa Khánh buổi sáng", "expect": { "ward": "Phường Hòa Khánh", "date": "sat", "time_from": "05:00", "time_to": "11:00" } },
+  { "q": "Sân ở An Hải ngày mai từ 17h đến 19h, tầm 70k", "expect": { "ward": "Phường An Hải", "date": "tomorrow", "time_from": "17:00", "time_to": "19:00", "max_price": 70000 } },
+  { "q": "sân trên đường Nguyễn Văn Linh", "expect": { "keyword": "Nguyễn Văn Linh" } },
+  { "q": "Tìm sân cho tôi", "expect": {}, "decision": "ask" },
+  { "q": "Viết giúp tôi một bài văn tả mùa thu", "expect": {}, "decision": "reject" },
+  { "q": "Thời tiết Đà Nẵng hôm nay thế nào", "expect": {}, "decision": "reject" },
+  { "q": "sân ở quận 1 Sài Gòn tối nay", "expect": {}, "decision": "ask" },
+  { "q": "rẻ hơn nữa", "previous": { "ward": "Phường Hải Châu", "date": "sat", "time_from": "18:00", "time_to": "22:00", "max_price": 80000 }, "expect": { "ward": "Phường Hải Châu", "date": "sat", "time_from": "18:00", "time_to": "22:00", "cheaper": true } },
+  { "q": "đổi sang chủ nhật", "previous": { "ward": "Phường Hải Châu", "date": "sat", "time_from": "18:00", "time_to": "22:00", "max_price": 80000 }, "expect": { "ward": "Phường Hải Châu", "date": "sun", "time_from": "18:00", "time_to": "22:00", "max_price": 80000 } },
+  { "q": "thế còn ở Sơn Trà thì sao", "previous": { "ward": "Phường Hải Châu", "date": "sat", "time_from": "18:00", "time_to": "22:00", "max_price": 80000 }, "expect": { "ward": "Phường Sơn Trà", "date": "sat", "time_from": "18:00", "time_to": "22:00", "max_price": 80000 } }
+]
