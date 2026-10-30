@@ -1,6 +1,6 @@
 # Kế hoạch phát triển — Cầu Lông Đà Nẵng (bản chờ duyệt)
 
-Ngày lập: 30/10/2026 · Trạng thái: **GĐ1 + GĐ5 ĐÃ TRIỂN KHAI 30/10/2026** (đã chạy 0008, 0009 trên Supabase; commit 979fff0 deploy Ready). GĐ2 (QR) ĐÃ TRIỂN KHAI 30/10/2026 (0010 đã chạy trên Supabase, commit 0c9b472 deploy Ready; còn cần quét thử bằng app ngân hàng). GĐ3 (email) ĐÃ TRIỂN KHAI 30/10/2026 (0011 đã chạy trên Supabase, commit 27828f0 deploy Ready, cron đã đăng ký). CHƯA gửi được thư cho tới khi bạn thêm 4 biến môi trường bên dưới rồi Redeploy. GĐ4 (đánh giá sân) đã code xong, chờ duyệt triển khai
+Ngày lập: 30/10/2026 · Trạng thái: **GĐ1 + GĐ5 ĐÃ TRIỂN KHAI 30/10/2026** (đã chạy 0008, 0009 trên Supabase; commit 979fff0 deploy Ready). GĐ2 (QR) ĐÃ TRIỂN KHAI 30/10/2026 (0010 đã chạy trên Supabase, commit 0c9b472 deploy Ready; còn cần quét thử bằng app ngân hàng). GĐ3 (email) ĐÃ TRIỂN KHAI 30/10/2026 (0011 đã chạy trên Supabase, commit 27828f0 deploy Ready, cron đã đăng ký). CHƯA gửi được thư cho tới khi bạn thêm 4 biến môi trường bên dưới rồi Redeploy. GĐ4 (đánh giá sân) ĐÃ TRIỂN KHAI 31/10/2026 (0012 đã chạy trên Supabase, commit fcd2b18 deploy Ready; đã xem trang sân và trang kiểm duyệt trên web thật). Đã xong cả 5 giai đoạn
 
 ### Tiến độ GĐ4 (30/10/2026)
 - Migration `0012_venue_reviews.sql` thêm bảng `venue_reviews` và tạo mọi RPC. Không ai đọc hay ghi trực tiếp vào bảng, nên không lộ người viết ẩn danh qua API.
