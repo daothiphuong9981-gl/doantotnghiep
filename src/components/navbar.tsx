@@ -22,6 +22,34 @@ function linksFor(role: Role | undefined) {
   return links;
 }
 
+const HEADER_CLASS = "sticky top-0 z-[1000] flex h-14 items-center gap-3 border-b border-slate-200 bg-white px-3 sm:gap-6 sm:px-6";
+
+function Logo() {
+  return (
+    <Link href="/" className="flex min-w-0 items-center gap-2 text-base font-extrabold text-brand-700 sm:text-lg">
+      <span className="relative inline-block h-6 w-6 flex-none rounded-lg bg-brand-700" aria-hidden>
+        <span className="absolute left-[11px] top-1 h-4 w-0.5 bg-white" />
+        <span className="absolute left-1 top-[11px] h-0.5 w-4 bg-white" />
+      </span>
+      <span className="truncate">Cầu Lông Đà Nẵng</span>
+    </Link>
+  );
+}
+
+/**
+ * Khung thanh điều hướng hiện ngay khi chưa biết ai đang đăng nhập. Root layout bọc Navbar trong Suspense với
+ * khung này, nên trang không phải chờ đọc hồ sơ người dùng xong mới bắt đầu hiển thị.
+ */
+export function NavbarFallback() {
+  return (
+    <header className={HEADER_CLASS}>
+      <Logo />
+      <div className="flex-1" />
+      <span className="h-8 w-24 animate-pulse rounded-lg bg-slate-100" aria-hidden />
+    </header>
+  );
+}
+
 export async function Navbar() {
   const session = await getSession();
   const role = session?.profile.role;
@@ -41,14 +69,8 @@ export async function Navbar() {
   );
 
   return (
-    <header className="sticky top-0 z-[1000] flex h-14 items-center gap-3 border-b border-slate-200 bg-white px-3 sm:gap-6 sm:px-6">
-      <Link href="/" className="flex min-w-0 items-center gap-2 text-base font-extrabold text-brand-700 sm:text-lg">
-        <span className="relative inline-block h-6 w-6 flex-none rounded-lg bg-brand-700" aria-hidden>
-          <span className="absolute left-[11px] top-1 h-4 w-0.5 bg-white" />
-          <span className="absolute left-1 top-[11px] h-0.5 w-4 bg-white" />
-        </span>
-        <span className="truncate">Cầu Lông Đà Nẵng</span>
-      </Link>
+    <header className={HEADER_CLASS}>
+      <Logo />
       <nav className="hidden items-center gap-5 text-sm font-medium text-slate-600 sm:flex">
         {links.map((link) => (
           <Link key={link.href} href={link.href} className="hover:text-brand-700">

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { preconnect } from "react-dom";
-import { Navbar } from "@/components/navbar";
+import { Navbar, NavbarFallback } from "@/components/navbar";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import "./globals.css";
 
@@ -15,7 +16,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="vi" className="h-full antialiased">
       <body className="flex min-h-full flex-col">
-        <Navbar />
+        {/* Navbar đọc phiên đăng nhập; bọc Suspense để phần còn lại của trang (và loading.tsx) hiện ngay */}
+        <Suspense fallback={<NavbarFallback />}>
+          <Navbar />
+        </Suspense>
         {isSupabaseConfigured ? null : (
           <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
             Chưa cấu hình Supabase. Hãy tạo file <code>.env.local</code> theo mẫu <code>.env.example</code> rồi khởi động lại.

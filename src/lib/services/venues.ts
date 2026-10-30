@@ -1,5 +1,8 @@
+import { createClient as createAnonClient } from "@supabase/supabase-js";
+import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import { addDays, currentHourInVietnam, hhmm, isValidDate, isWeekend, todayInVietnam } from "@/lib/format";
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { BOOKING_RULES } from "@/lib/constants";
 import { fail, ok, type Court, type PriceSlot, type Result, type SlotState, type Venue, type VenueCard, type VenueImage, type Ward } from "@/lib/types";
@@ -19,12 +22,29 @@ const toCard = (row: Record<string, unknown>): VenueCard => ({
   free_courts: row.free_courts === null || row.free_courts === undefined ? null : Number(row.free_courts),
 });
 
+/**
+ * Danh mục phường, xã gần như không đổi: lưu đệm 1 ngày trên máy chủ thay vì hỏi Supabase ở mỗi lần mở trang chủ
+ * và mỗi câu hỏi trợ lý AI. Bảng wards cho khách đọc nên dùng client ẩn danh, không đọc cookie trong vùng cache.
+ * Lỗi thì ném ra để không lưu đệm kết quả lỗi.
+ */
+const cachedWards = unstable_cache(
+  async (): Promise<Ward[]> => {
+    const supabase = createAnonClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
+    const { data, error } = await supabase.from("wards").select("id, name, type").order("id");
+    if (error) throw new Error(error.message);
+    return (data ?? []) as Ward[];
+  },
+  ["wards-v1"],
+  { revalidate: 86_400, tags: ["wards"] },
+);
+
 /** Danh mục phường, xã. */
 export async function listWards(): Promise<Result<Ward[]>> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.from("wards").select("id, name, type").order("id");
-  if (error) return fail(500, "Không tải được danh mục phường, xã");
-  return ok(data ?? []);
+  try {
+    return ok(await cachedWards());
+  } catch {
+    return fail(500, "Không tải được danh mục phường, xã");
+  }
 }
 
 export interface VenueFilter {
@@ -96,21 +116,24 @@ export interface VenueDetail {
 export const getVenueDetail = cache(async (id: number): Promise<Result<VenueDetail>> => {
   if (!Number.isInteger(id) || id <= 0) return fail(404, "Không tìm thấy sân");
   const supabase = await createClient();
+  // Một truy vấn duy nhất: PostgREST nhúng bảng giá, ảnh và sân con theo khóa ngoại (RLS vẫn áp dụng cho từng bảng)
   const { data: venue } = await supabase
     .from("venues")
-    .select("id, ward_id, name, address, description, contact_phone, latitude, longitude, open_time, close_time, hold_minutes, max_slots_per_booking, advance_days, max_active_holds, status, wards(name)")
+    .select(
+      "id, ward_id, name, address, description, contact_phone, latitude, longitude, open_time, close_time, hold_minutes, max_slots_per_booking, advance_days, max_active_holds, status, wards(name), price_slots(id, day_type, start_time, end_time, price), venue_images(id, storage_path, sort_order), courts(id, name, is_active)",
+    )
     .eq("id", id)
     .eq("status", "approved")
+    .eq("courts.is_active", true)
+    .order("day_type", { referencedTable: "price_slots" })
+    .order("start_time", { referencedTable: "price_slots" })
+    .order("sort_order", { referencedTable: "venue_images" })
+    .order("id", { referencedTable: "venue_images" })
+    .order("id", { referencedTable: "courts" })
     .maybeSingle();
   if (!venue) return fail(404, "Không tìm thấy sân");
 
-  const [prices, images, courts] = await Promise.all([
-    supabase.from("price_slots").select("id, day_type, start_time, end_time, price").eq("venue_id", id).order("day_type").order("start_time"),
-    supabase.from("venue_images").select("id, storage_path, sort_order").eq("venue_id", id).order("sort_order").order("id"),
-    supabase.from("courts").select("id, name, is_active").eq("venue_id", id).eq("is_active", true).order("id"),
-  ]);
-
-  const { wards, ...rest } = venue;
+  const { wards, price_slots: prices, venue_images: images, courts, ...rest } = venue;
   const wardRow = wards as unknown as { name: string } | { name: string }[] | null;
   const wardName = Array.isArray(wardRow) ? wardRow[0]?.name : wardRow?.name;
   return ok({
@@ -122,9 +145,9 @@ export const getVenueDetail = cache(async (id: number): Promise<Result<VenueDeta
       close_time: hhmm(rest.close_time),
       ward_name: wardName ?? "",
     },
-    prices: (prices.data ?? []).map((p) => ({ ...p, start_time: hhmm(p.start_time), end_time: hhmm(p.end_time) })),
-    images: images.data ?? [],
-    courts: courts.data ?? [],
+    prices: ((prices ?? []) as PriceSlot[]).map((p) => ({ ...p, start_time: hhmm(p.start_time), end_time: hhmm(p.end_time) })),
+    images: (images ?? []) as VenueImage[],
+    courts: (courts ?? []) as Court[],
   });
 });
 

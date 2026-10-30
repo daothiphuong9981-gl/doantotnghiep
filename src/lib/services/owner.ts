@@ -66,16 +66,26 @@ export async function getMyVenue(id: number): Promise<Result<OwnerVenueDetail>> 
   const supabase = await createClient();
   const owner = await requireOwner();
   if (!owner.ok) return owner;
-  const { data: venue } = await supabase.from("venues").select("*").eq("id", id).eq("owner_id", owner.data).maybeSingle();
-  if (!venue) return fail(404, "Không tìm thấy sân");
-  const [courts, prices, images] = await Promise.all([
+  // Tài khoản nhận tiền không đọc trực tiếp từ bảng được (0009_security.sql): lấy qua hàm venue_bank_info, song song
+  const [{ data: venue }, { data: bank }, courts, prices, images] = await Promise.all([
+    supabase
+      .from("venues")
+      .select("id, owner_id, ward_id, name, address, description, contact_phone, latitude, longitude, open_time, close_time, hold_minutes, max_slots_per_booking, advance_days, max_active_holds, status, reject_reason")
+      .eq("id", id)
+      .eq("owner_id", owner.data)
+      .maybeSingle(),
+    supabase.rpc("venue_bank_info", { p_venue_id: id }).maybeSingle<Pick<Venue, "bank_name" | "bank_account_number" | "bank_account_name">>(),
     supabase.from("courts").select("id, name, is_active").eq("venue_id", id).order("id"),
     supabase.from("price_slots").select("id, day_type, start_time, end_time, price").eq("venue_id", id).order("day_type").order("start_time"),
     supabase.from("venue_images").select("id, storage_path, sort_order").eq("venue_id", id).order("sort_order").order("id"),
   ]);
+  if (!venue) return fail(404, "Không tìm thấy sân");
   return ok({
     venue: {
       ...venue,
+      bank_name: bank?.bank_name ?? "",
+      bank_account_number: bank?.bank_account_number ?? "",
+      bank_account_name: bank?.bank_account_name ?? "",
       latitude: Number(venue.latitude),
       longitude: Number(venue.longitude),
       open_time: hhmm(venue.open_time),

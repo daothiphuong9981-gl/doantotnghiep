@@ -5,8 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AppNotification, NotificationKind } from "@/lib/types";
 
-/** Chu kỳ hỏi thông báo mới khi tab đang mở (ms). */
-const POLL_MS = 20_000;
+/** Chu kỳ hỏi thông báo mới khi tab đang mở (ms). Quay lại tab thì hỏi ngay nên không cần hỏi dày. */
+const POLL_MS = 45_000;
 /** Thời gian hiện popup thông báo mới (ms). */
 const TOAST_MS = 7_000;
 

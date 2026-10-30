@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { VenueReviewActions } from "@/components/admin/venue-review-actions";
 import { Alert, buttonClass, Chip, inputClass } from "@/components/ui/controls";
 import { PillTabs } from "@/components/ui/data";
@@ -105,8 +106,7 @@ export default async function AdminVenuesPage({ searchParams }: PageProps<"/admi
               {v.images.length > 0 ? (
                 <div className="mt-2 flex gap-2 overflow-x-auto">
                   {v.images.map((path, i) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img key={path} src={imageUrl(path) ?? ""} alt={`Ảnh ${i + 1} của ${v.name}`} className="h-20 w-28 flex-none rounded-lg object-cover" />
+                    <Image key={path} src={imageUrl(path) ?? ""} alt={`Ảnh ${i + 1} của ${v.name}`} width={112} height={80} sizes="112px" className="h-20 w-28 flex-none rounded-lg object-cover" />
                   ))}
                 </div>
               ) : (

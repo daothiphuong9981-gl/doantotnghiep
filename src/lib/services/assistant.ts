@@ -103,8 +103,11 @@ export async function chat(input: unknown): Promise<Result<AssistantReply>> {
   const user = await getAuthUser();
   if (!user) return fail(401, "Bạn cần đăng nhập để dùng trợ lý AI");
 
-  // Ghi nhận lượt hỏi trước khi gọi Gemini; vượt giới hạn thì dừng (429)
-  const begun = await supabase.rpc("ai_begin", { p_session_id: sessionId, p_question: message, p_daily_limit: AI_DAILY_LIMIT });
+  // Ghi nhận lượt hỏi trước khi gọi Gemini; vượt giới hạn thì dừng (429). Danh mục phường tải song song.
+  const [begun, wards] = await Promise.all([
+    supabase.rpc("ai_begin", { p_session_id: sessionId, p_question: message, p_daily_limit: AI_DAILY_LIMIT }),
+    listWards(),
+  ]);
   if (begun.error) {
     if (begun.error.message === "RATE_LIMITED") {
       return fail(429, `Bạn đã dùng hết ${AI_DAILY_LIMIT} lượt hỏi trợ lý AI trong hôm nay. Bạn vẫn tìm sân được bằng bộ lọc thông thường ở trang chủ.`);
@@ -120,7 +123,6 @@ export async function chat(input: unknown): Promise<Result<AssistantReply>> {
     return ok({ reply: FALLBACK_TEXT, filter: null, venues: [], remaining, fallback: true });
   };
 
-  const wards = await listWards();
   if (!wards.ok) return fallback();
   const today = todayInVietnam();
   const currentHour = currentHourInVietnam();
@@ -163,13 +165,18 @@ export async function chat(input: unknown): Promise<Result<AssistantReply>> {
   }
   const total = found.data.length;
   const venues = found.data.slice(0, MAX_VENUES);
-  await finish(filter, total, "ok");
-  if (total === 0) return ok({ reply: noResultReply(filter), filter, venues: [], remaining, fallback: false });
+  if (total === 0) {
+    await finish(filter, total, "ok");
+    return ok({ reply: noResultReply(filter), filter, venues: [], remaining, fallback: false });
+  }
 
-  // Gemini chỉ diễn đạt lại kết quả; lỗi thì dùng câu mẫu dựng từ dữ liệu
+  // Gemini chỉ diễn đạt lại kết quả; lỗi thì dùng câu mẫu dựng từ dữ liệu. Ghi nhật ký lượt hỏi song song.
   const replyVenues = venues.map(toReplyVenue);
   const prompt = buildReplyPrompt(filter, replyVenues);
-  const phrased = await callGemini({ system: prompt.system, user: prompt.user, timeoutMs: 12_000, maxOutputTokens: 400 });
+  const [, phrased] = await Promise.all([
+    finish(filter, total, "ok"),
+    callGemini({ system: prompt.system, user: prompt.user, timeoutMs: 12_000, maxOutputTokens: 400 }),
+  ]);
   const more = total > venues.length ? ` (Hiển thị ${venues.length} trong ${total} sân phù hợp.)` : "";
   return ok({ reply: `${phrased.ok ? phrased.text : templateReply(replyVenues)}${note}${more}`, filter, venues, remaining, fallback: false });
 }

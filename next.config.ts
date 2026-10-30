@@ -7,6 +7,13 @@ const nextConfig: NextConfig = {
   // Cho phép mở bản dev từ điện thoại cùng mạng Wi-Fi (http://192.168.x.x:3000). Thiếu dòng này Next.js chặn
   // các tệp JavaScript của chế độ dev, trang hiện ra nhưng không bấm được gì. Chỉ áp dụng khi chạy `npm run dev`.
   allowedDevOrigins: ["192.168.*.*", "10.*.*.*", "172.*.*.*"],
+  // Ảnh sân lưu ở Supabase Storage thường là ảnh gốc chụp từ điện thoại (vài MB). next/image thu nhỏ, đổi sang
+  // WebP/AVIF và lưu đệm trên CDN; chỉ cho phép ảnh trong bucket công khai của dự án.
+  images: {
+    remotePatterns: [{ protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/object/public/**" }],
+    formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 2_678_400,
+  },
   turbopack: {
     rules: {
       "*.css": {

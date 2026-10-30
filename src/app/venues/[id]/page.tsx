@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SlotPicker } from "@/components/booking/slot-picker";
@@ -16,7 +17,8 @@ export default async function VenuePage({ params, searchParams }: PageProps<"/ve
   const { id } = await params;
   const query = await searchParams;
   const venueId = Number(id);
-  const detail = await getVenueDetail(venueId);
+  // Phiên đăng nhập không phụ thuộc thông tin sân: lấy song song, bớt một lượt chờ Supabase
+  const [detail, session] = await Promise.all([getVenueDetail(venueId), getSession()]);
   if (!detail.ok) notFound();
   const { venue, prices, images } = detail.data;
 
@@ -28,7 +30,7 @@ export default async function VenuePage({ params, searchParams }: PageProps<"/ve
   const date = isValidDate(requested) && requested >= today && requested <= addDays(today, venue.advance_days) ? requested : defaultDate;
   // Giờ được chọn sẵn khi đi từ trợ lý AI hoặc bộ lọc khung giờ
   const focusTime = typeof query.time === "string" && /^([01]\d|2[0-3]):00$/.test(query.time) ? query.time : null;
-  const [availability, session] = await Promise.all([getAvailability(venueId, date), getSession()]);
+  const availability = await getAvailability(venueId, date);
   const days = Array.from({ length: venue.advance_days + 1 }, (_, i) => addDays(today, i));
 
   return (
@@ -37,11 +39,14 @@ export default async function VenuePage({ params, searchParams }: PageProps<"/ve
         <div className="grid h-40 grid-cols-4 gap-2">
           {images.length > 0 ? (
             images.slice(0, 3).map((img, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image
                 key={img.id}
                 src={imageUrl(img.storage_path) ?? ""}
                 alt={`Ảnh ${i + 1} của ${venue.name}`}
+                width={i === 0 ? 720 : 360}
+                height={320}
+                sizes={i === 0 ? "(min-width: 1024px) 400px, 50vw" : "(min-width: 1024px) 200px, 25vw"}
+                preload={i === 0}
                 className={`h-40 w-full rounded-xl object-cover ${i === 0 ? "col-span-2" : ""}`}
               />
             ))

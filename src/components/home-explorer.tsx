@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { BOOKING_RULES } from "@/lib/constants";
@@ -217,8 +218,7 @@ export function HomeExplorer({
     return (
       <div className="flex flex-col gap-2 text-slate-900">
         {thumb ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={thumb} alt="" className="h-24 w-full rounded-lg object-cover" />
+          <Image src={thumb} alt="" width={260} height={96} sizes="260px" className="h-24 w-full rounded-lg object-cover" />
         ) : null}
         <div>
           <p className="m-0! text-sm font-bold leading-snug">{v.name}</p>
@@ -456,8 +456,7 @@ export function HomeExplorer({
                   }`}
                 >
                   {thumb ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={thumb} alt="" loading="lazy" className="h-[72px] w-[92px] flex-none rounded-lg object-cover" />
+                    <Image src={thumb} alt="" width={92} height={72} sizes="92px" className="h-[72px] w-[92px] flex-none rounded-lg object-cover" />
                   ) : (
                     <CourtPlaceholder className="h-[72px] w-[92px] flex-none" />
                   )}

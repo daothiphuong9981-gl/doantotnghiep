@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
-    "test:db": "node supabase/tests/rls-sprint1.test.mjs && node supabase/tests/bookings-sprint2.test.mjs && node supabase/tests/admin-sprint3.test.mjs && node supabase/tests/notifications.test.mjs && node supabase/tests/import-san.test.mjs && node supabase/tests/demo-data.test.mjs",
+    "test:db": "node supabase/tests/rls-sprint1.test.mjs && node supabase/tests/bookings-sprint2.test.mjs && node supabase/tests/admin-sprint3.test.mjs && node supabase/tests/notifications.test.mjs && node supabase/tests/import-san.test.mjs && node supabase/tests/demo-data.test.mjs && node supabase/tests/security-perf.test.mjs",
     "test:unit": "node tests/ai/filter.test.mjs",
     "test:ai": "node tests/ai/eval.mjs",
     "postinstall": "node scripts/copy-maplibre-worker.mjs"
@@ -19,7 +19,7 @@
     "@supabase/supabase-js": "^2.117.3",
     "leaflet": "^1.9.4",
     "maplibre-gl": "^6.14.0",
-    "next": "16.4.0",
+    "next": "16.4.3",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-leaflet": "^5.0.0",
@@ -34,7 +34,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.4.0",
+    "eslint-config-next": "16.4.3",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

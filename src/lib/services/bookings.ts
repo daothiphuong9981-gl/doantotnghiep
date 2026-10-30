@@ -83,21 +83,12 @@ export interface BookingView {
   server_time: string;
 }
 
+/** Thông tin chuyển khoản qua hàm booking_payment_info: cột tài khoản ngân hàng không đọc trực tiếp được (0009). */
 async function paymentOf(supabase: Supabase, booking: Booking): Promise<PaymentInfo | null> {
   if (booking.status !== "holding" && booking.status !== "awaiting_confirmation") return null;
-  const { data } = await supabase
-    .from("venues")
-    .select("bank_name, bank_account_number, bank_account_name")
-    .eq("id", booking.venue_id)
-    .maybeSingle();
+  const { data } = await supabase.rpc("booking_payment_info", { p_booking_id: booking.id }).maybeSingle<PaymentInfo>();
   if (!data) return null;
-  return {
-    bank_name: data.bank_name,
-    account_number: data.bank_account_number,
-    account_name: data.bank_account_name,
-    amount: booking.total_amount,
-    content: booking.code,
-  };
+  return { ...data, amount: Number(data.amount) };
 }
 
 /** PB14, PB15 - Giữ chỗ: tạo một lượt đặt gồm nhiều sân con, nhiều khung giờ. */
@@ -118,9 +109,9 @@ export async function createBooking(input: unknown): Promise<BookingResult<Booki
 export async function getBooking(id: number): Promise<Result<BookingView>> {
   if (!Number.isInteger(id) || id <= 0) return fail(404, "Không tìm thấy lượt đặt");
   const supabase = await createClient();
-  const user = await currentUser();
+  // Hồ sơ người dùng và lượt đặt không phụ thuộc nhau: đọc song song (RLS vẫn chỉ trả lượt người gọi được xem)
+  const [user, row] = await Promise.all([currentUser(), readBooking(supabase, id)]);
   if (!user) return fail(401, "Bạn cần đăng nhập");
-  const row = await readBooking(supabase, id);
   if (!row) return missing(supabase, id);
   if (row.player_id !== user.id) return fail(403, "Đây không phải lượt đặt của bạn");
   const booking = toBooking(row);
@@ -243,7 +234,8 @@ export async function listOwnerBookings(params: { venueId?: number; date?: strin
     venues: venues ?? [],
     bookings: rows.map((r) => ({
       ...toBooking(r),
-      player_name: byId.get(r.player_id as string)?.full_name ?? "Tài khoản đã xóa",
+      // Lượt giữ chỗ đã hết hạn không kèm thông tin khách (0009_security.sql); không tìm thấy hồ sơ ở lượt khác là tài khoản đã xóa
+      player_name: byId.get(r.player_id as string)?.full_name ?? (r.status === "expired" && r.player_id ? "Khách (giữ chỗ hết hạn)" : "Tài khoản đã xóa"),
       player_phone: byId.get(r.player_id as string)?.phone ?? "",
     })),
   });
