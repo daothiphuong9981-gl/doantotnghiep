@@ -1,6 +1,6 @@
 # Kế hoạch phát triển — Cầu Lông Đà Nẵng (bản chờ duyệt)
 
-Ngày lập: 30/10/2026 · Trạng thái: **GĐ1 + GĐ5 ĐÃ TRIỂN KHAI 30/10/2026** (đã chạy 0008, 0009 trên Supabase; commit 979fff0 deploy Ready). GĐ2 (QR) đã code xong, chờ duyệt triển khai (chạy 0010 trên Supabase, rồi deploy)
+Ngày lập: 30/10/2026 · Trạng thái: **GĐ1 + GĐ5 ĐÃ TRIỂN KHAI 30/10/2026** (đã chạy 0008, 0009 trên Supabase; commit 979fff0 deploy Ready). GĐ2 (QR) ĐÃ TRIỂN KHAI 30/10/2026 (0010 đã chạy trên Supabase, commit 0c9b472 deploy Ready; còn cần quét thử bằng app ngân hàng). Tiếp theo: GĐ3 (email), cần chốt cách gửi trước
 
 ### Tiến độ GĐ2 (30/10/2026)
 - Mã VietQR tự tạo trên máy chủ (`src/lib/vietqr.ts`), không gọi dịch vụ ngoài. Payload khớp từng ký tự với mã do img.vietqr.io tạo; ảnh PNG khoảng 5 KB, giải mã ngược khớp payload.
