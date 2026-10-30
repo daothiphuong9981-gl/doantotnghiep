@@ -1,6 +1,19 @@
 # Kế hoạch phát triển — Cầu Lông Đà Nẵng (bản chờ duyệt)
 
-Ngày lập: 30/10/2026 · Trạng thái: **ĐÃ DUYỆT 30/10/2026** — GĐ1 + GĐ5 đã code xong (chưa commit, chưa chạy migration trên Supabase thật, chưa deploy)
+Ngày lập: 30/10/2026 · Trạng thái: **GĐ1 + GĐ5 ĐÃ TRIỂN KHAI 30/10/2026** (đã chạy 0008, 0009 trên Supabase; commit 979fff0 deploy Ready). Tiếp theo: GĐ2 (QR)
+
+### Kết quả đo sau deploy (30/10/2026, hàm chạy ở sin1)
+Đo tuần tự, đã khởi động sẵn, thời gian tải xong:
+
+| Trang | Trước (iad1) | Sau (sin1) |
+|---|---|---|
+| `/venues/41` | ~4,0 s | ~0,30–0,36 s |
+| `/` | ~1,8 s | ~0,24–0,34 s |
+| `/bookings` | ~2,1 s | ~0,23–0,31 s |
+| `/api/wards` | ~1,4 s | ~0,21 s |
+
+Khoảng 0,2 s trong số đó là độ trễ mạng từ trình duyệt tới edge của Vercel.
+- Chưa kiểm tra trên production: luồng `next/image` (chưa sân nào có ảnh); khung thanh toán của người chơi và trang sửa sân của chủ sân (cần tài khoản player/owner, cần tạo dữ liệu thật). DB đã xác nhận có quyền và các RPC mới.
 
 ### Tiến độ GĐ1 + GĐ5 (30/10/2026)
 - Đã làm:
