@@ -1,6 +1,20 @@
 # Kế hoạch phát triển — Cầu Lông Đà Nẵng (bản chờ duyệt)
 
-Ngày lập: 30/10/2026 · Trạng thái: **GĐ1 + GĐ5 ĐÃ TRIỂN KHAI 30/10/2026** (đã chạy 0008, 0009 trên Supabase; commit 979fff0 deploy Ready). GĐ2 (QR) ĐÃ TRIỂN KHAI 30/10/2026 (0010 đã chạy trên Supabase, commit 0c9b472 deploy Ready; còn cần quét thử bằng app ngân hàng). Tiếp theo: GĐ3 (email), cần chốt cách gửi trước
+Ngày lập: 30/10/2026 · Trạng thái: **GĐ1 + GĐ5 ĐÃ TRIỂN KHAI 30/10/2026** (đã chạy 0008, 0009 trên Supabase; commit 979fff0 deploy Ready). GĐ2 (QR) ĐÃ TRIỂN KHAI 30/10/2026 (0010 đã chạy trên Supabase, commit 0c9b472 deploy Ready; còn cần quét thử bằng app ngân hàng). GĐ3 (email) đã code xong, chờ duyệt triển khai và chờ bạn thêm biến môi trường
+
+### Tiến độ GĐ3 (30/10/2026), chốt dùng 1 Gmail hệ thống
+- Thư được gửi khi chủ sân xác nhận đặt sân.
+  - Trigger `queue_booking_email` (0011) ghi đúng 1 thư vào `email_outbox` trong cùng giao dịch, nên không mất thư và không gửi trùng.
+  - Máy chủ gửi thư bằng `after()` để chủ sân không phải chờ. Cron hằng ngày lúc 8:00 gửi lại các thư lỗi, tối đa 5 lần, và chỉ gửi thư tạo trong 2 ngày gần nhất.
+- Người gửi hiển thị tên sân, nhưng địa chỉ gửi là Gmail hệ thống. Bấm trả lời thư sẽ tới email của chủ sân (Reply-To).
+- Nội dung thư: mã lượt, tên sân, địa chỉ, SĐT, từng khung giờ (ngày, giờ, sân con, giá), tổng tiền, thời điểm xác nhận, link xem lượt đặt. Có cả bản HTML và bản chữ thuần.
+- `email_outbox` chỉ `service_role` đọc được. Thư đã gửi quá 30 ngày được tự xoá. Dữ liệu demo không sinh thư.
+- Kiểm thử: `test:db` 308/308 (thêm `email-outbox.test.mjs`), `tests/email.test.mjs` 13/13, `tsc`, lint, build, `npm audit` 0 lỗ hổng (nodemailer 10.3.1).
+- **Bạn cần tự thêm trên Vercel** (Settings > Environment Variables, môi trường Production), rồi Redeploy:
+  - `SMTP_USER`: địa chỉ Gmail hệ thống.
+  - `SMTP_PASS`: Mật khẩu ứng dụng 16 ký tự (Tài khoản Google > Bảo mật > bật Xác minh 2 bước > Mật khẩu ứng dụng).
+  - `SUPABASE_SERVICE_ROLE_KEY`: lấy ở Supabase > Project Settings > API Keys > service_role.
+  - `CRON_SECRET`: một chuỗi ngẫu nhiên dài, dùng cho cron gửi lại thư.
 
 ### Tiến độ GĐ2 (30/10/2026)
 - Mã VietQR tự tạo trên máy chủ (`src/lib/vietqr.ts`), không gọi dịch vụ ngoài. Payload khớp từng ký tự với mã do img.vietqr.io tạo; ảnh PNG khoảng 5 KB, giải mã ngược khớp payload.

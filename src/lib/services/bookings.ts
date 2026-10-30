@@ -1,8 +1,10 @@
+import { after } from "next/server";
 import QRCode from "qrcode";
 import { dbFail, type DbError } from "@/lib/db-errors";
 import { describeDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/lib/auth";
+import { isEmailConfigured, processEmailOutbox } from "@/lib/services/emails";
 import { fail, ok, type Booking, type BookingItem, type BookingStatus, type PaymentInfo, type Result } from "@/lib/types";
 import { bookingSchema } from "@/lib/validation";
 import { canMakeVietQr, vietQrPayload } from "@/lib/vietqr";
@@ -282,6 +284,9 @@ export async function ownerSetBookingStatus(id: number, input: unknown): Promise
     // Lượt đặt của sân khác: hàm trả FORBIDDEN (403), không để lộ có tồn tại hay không
     return fromDbError(error, "Không cập nhật được lượt đặt");
   }
+  // Trigger 0011 đã ghi thư xác nhận vào hàng đợi; gửi sau khi trả kết quả để chủ sân không phải chờ SMTP.
+  // Gửi lỗi thì thư vẫn nằm trong hàng đợi, /api/cron/send-emails gửi lại.
+  if (body.action === "confirm_payment" && isEmailConfigured()) after(() => processEmailOutbox(5));
   const row = await readBooking(supabase, id);
   return row ? ok({ booking: toBooking(row) }) : fail(404, "Không tìm thấy lượt đặt");
 }

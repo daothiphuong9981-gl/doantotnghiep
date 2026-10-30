@@ -31,7 +31,7 @@ grant usage on schema public, auth, storage to anon, authenticated;
 `);
 await db.exec(file('../migrations/0001_init.sql'));
 await db.exec(file('../seed.sql'));
-for (const f of ['0002_bookings.sql', '0004_venue_rules.sql', '0005_admin_stats_ai.sql', '0006_notifications.sql', '0007_overdue_awaiting.sql', '0008_performance.sql', '0009_security.sql', '0010_payment_qr.sql']) await db.exec(file('../migrations/' + f));
+for (const f of ['0002_bookings.sql', '0004_venue_rules.sql', '0005_admin_stats_ai.sql', '0006_notifications.sql', '0007_overdue_awaiting.sql', '0008_performance.sql', '0009_security.sql', '0010_payment_qr.sql', '0011_email_outbox.sql']) await db.exec(file('../migrations/' + f));
 await db.exec(file('../import_san_khao_sat.sql'));
 const [{ n: venues }] = await q(`select count(*)::int n from venues`);
 

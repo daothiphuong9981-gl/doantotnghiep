@@ -31,7 +31,7 @@ grant usage on schema auth, storage to anon, authenticated;
 `);
 await db.exec(fs.readFileSync(`${APP}/supabase/migrations/0001_init.sql`, 'utf8'));
 await db.exec(fs.readFileSync(`${APP}/supabase/seed.sql`, 'utf8'));
-for (const f of ['0002_bookings.sql', '0004_venue_rules.sql', '0005_admin_stats_ai.sql', '0006_notifications.sql', '0007_overdue_awaiting.sql', '0008_performance.sql', '0009_security.sql', '0010_payment_qr.sql']) await db.exec(fs.readFileSync(`${APP}/supabase/migrations/${f}`, 'utf8'));
+for (const f of ['0002_bookings.sql', '0004_venue_rules.sql', '0005_admin_stats_ai.sql', '0006_notifications.sql', '0007_overdue_awaiting.sql', '0008_performance.sql', '0009_security.sql', '0010_payment_qr.sql', '0011_email_outbox.sql']) await db.exec(fs.readFileSync(`${APP}/supabase/migrations/${f}`, 'utf8'));
 await db.exec(`
 -- Các hàm chỉ dùng cho môi trường kiểm thử; gọi qua PostgREST để mọi truy vấn đi chung một hàng đợi
 create function public.__test_signup(p_email text, p_password text, p_meta jsonb) returns uuid language plpgsql security definer as $$

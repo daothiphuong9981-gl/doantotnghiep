@@ -16,7 +16,7 @@ alter table storage.objects enable row level security;
 create function storage.foldername(name text) returns text[] language sql immutable as $$ select string_to_array(name, '/') $$;
 grant usage on schema public, auth, storage to anon, authenticated;
 `);
-for (const f of ['0001_init.sql', '0002_bookings.sql', '0004_venue_rules.sql', '0005_admin_stats_ai.sql', '0006_notifications.sql', '0007_overdue_awaiting.sql', '0008_performance.sql', '0009_security.sql', '0010_payment_qr.sql']) await db.exec(read('../migrations/' + f));
+for (const f of ['0001_init.sql', '0002_bookings.sql', '0004_venue_rules.sql', '0005_admin_stats_ai.sql', '0006_notifications.sql', '0007_overdue_awaiting.sql', '0008_performance.sql', '0009_security.sql', '0010_payment_qr.sql', '0011_email_outbox.sql']) await db.exec(read('../migrations/' + f));
 await db.exec(read('../seed.sql'));
 
 const q = async (sql, p) => (await db.query(sql, p)).rows;
