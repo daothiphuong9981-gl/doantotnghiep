@@ -68,10 +68,13 @@ export interface Booking {
 
 export interface PaymentInfo {
   bank_name: string;
+  bank_bin: string | null;
   account_number: string;
   account_name: string;
   amount: number;
   content: string;
+  /** Mã VietQR điền sẵn số tiền, nội dung; chỉ có khi lượt đặt đang giữ chỗ và sân đã chọn ngân hàng hợp lệ */
+  qr: { payload: string; image: string } | null;
 }
 
 export interface PriceSlot {
@@ -111,6 +114,7 @@ export interface Venue {
   advance_days: number;
   max_active_holds: number;
   bank_name: string;
+  bank_bin: string | null;
   bank_account_number: string;
   bank_account_name: string;
   status: VenueStatus;

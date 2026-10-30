@@ -31,7 +31,7 @@ const playerB = await signUp('Phạm Thị D', mail('playerb'), 'player', '09050
 const uid = async (email) => (await sql(`select id from auth.users where email='${email}'`))[0].id;
 const [oA, oB, , pB] = await Promise.all([uid(mail('ownera')), uid(mail('ownerb')), uid(mail('playera')), uid(mail('playerb'))]);
 const mkVenue = async (owner, name, address, ward, lat, lng, hold) => {
-  await sql(`insert into venues (owner_id, ward_id, name, address, latitude, longitude, open_time, close_time, hold_minutes, bank_name, bank_account_number, bank_account_name, status) values ('${owner}', ${ward}, '${name}', '${address}', ${lat}, ${lng}, '05:00', '22:00', ${hold}, 'Ngân hàng mẫu ABC', '0123456789', 'TRAN VAN B', 'pending')`);
+  await sql(`insert into venues (owner_id, ward_id, name, address, latitude, longitude, open_time, close_time, hold_minutes, bank_name, bank_bin, bank_account_number, bank_account_name, status) values ('${owner}', ${ward}, '${name}', '${address}', ${lat}, ${lng}, '05:00', '22:00', ${hold}, 'Ngân hàng mẫu ABC', '970436', '0123456789', 'TRAN VAN B', 'pending')`);
   const id = (await sql(`select id from venues where name='${name}'`))[0].id;
   await sql(`update venues set status='approved' where id=${id}`);
   return id;
@@ -115,7 +115,7 @@ const payText = await ap.textContent('main');
 check('PB18 trang thanh toán: mã, sân con, khung giờ, tổng tiền, ngân hàng, số TK, chủ TK, nội dung = mã đặt chỗ, đếm ngược',
   (await ap.textContent('[data-testid=booking-code]')) === b1row.code && payText.includes('Sân 2') && payText.includes('Sân 4') && payText.includes('19:00 – 20:00') && payText.includes('20:00 – 21:00') &&
   (await ap.textContent('[data-testid=booking-total]')).includes('210.000') && (await ap.textContent('[data-testid=bank-name]')) === 'Ngân hàng mẫu ABC' && (await ap.textContent('[data-testid=bank-number]')) === '0123456789' &&
-  (await ap.textContent('[data-testid=bank-holder]')) === 'TRAN VAN B' && (await ap.textContent('[data-testid=transfer-content]')) === b1row.code && /^0[34]:\d\d$/.test(await ap.textContent('[data-testid=countdown]')), payText.slice(0, 400));
+  (await ap.textContent('[data-testid=bank-holder]')) === 'TRAN VAN B' && (await ap.textContent('[data-testid=transfer-content]')) === b1row.code && (await ap.locator('[data-testid=payment-qr] img').count()) === 1 && /^0[34]:\d\d$/.test(await ap.textContent('[data-testid=countdown]')), payText.slice(0, 400));
 const c1 = await ap.textContent('[data-testid=countdown]'); await ap.waitForTimeout(2200); const c2 = await ap.textContent('[data-testid=countdown]');
 check('PB15 đồng hồ đếm ngược đang chạy', c2 < c1, `${c1} -> ${c2}`);
 

@@ -35,6 +35,7 @@ for (const f of ['0002_bookings.sql', '0004_venue_rules.sql', '0005_admin_stats_
 await db.exec(`grant select on all tables in schema public to anon, authenticated;`);
 await db.exec(file('../migrations/0008_performance.sql'));
 await db.exec(file('../migrations/0009_security.sql'));
+await db.exec(file('../migrations/0010_payment_qr.sql'));
 
 // ---------------------------------------------------------------- 0008: index
 const idx = (await q(`select indexname from pg_indexes where schemaname = 'public'`)).map((r) => r.indexname);

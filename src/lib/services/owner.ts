@@ -74,7 +74,7 @@ export async function getMyVenue(id: number): Promise<Result<OwnerVenueDetail>> 
       .eq("id", id)
       .eq("owner_id", owner.data)
       .maybeSingle(),
-    supabase.rpc("venue_bank_info", { p_venue_id: id }).maybeSingle<Pick<Venue, "bank_name" | "bank_account_number" | "bank_account_name">>(),
+    supabase.rpc("venue_bank_info", { p_venue_id: id }).maybeSingle<Pick<Venue, "bank_name" | "bank_bin" | "bank_account_number" | "bank_account_name">>(),
     supabase.from("courts").select("id, name, is_active").eq("venue_id", id).order("id"),
     supabase.from("price_slots").select("id, day_type, start_time, end_time, price").eq("venue_id", id).order("day_type").order("start_time"),
     supabase.from("venue_images").select("id, storage_path, sort_order").eq("venue_id", id).order("sort_order").order("id"),
@@ -84,6 +84,7 @@ export async function getMyVenue(id: number): Promise<Result<OwnerVenueDetail>> 
     venue: {
       ...venue,
       bank_name: bank?.bank_name ?? "",
+      bank_bin: bank?.bank_bin ?? null,
       bank_account_number: bank?.bank_account_number ?? "",
       bank_account_name: bank?.bank_account_name ?? "",
       latitude: Number(venue.latitude),

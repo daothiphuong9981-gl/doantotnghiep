@@ -103,7 +103,7 @@ export async function listVenues(filter: VenueFilter): Promise<Result<VenueCard[
 }
 
 export interface VenueDetail {
-  venue: Omit<Venue, "bank_name" | "bank_account_number" | "bank_account_name" | "owner_id" | "reject_reason"> & { ward_name: string };
+  venue: Omit<Venue, "bank_name" | "bank_bin" | "bank_account_number" | "bank_account_name" | "owner_id" | "reject_reason"> & { ward_name: string };
   prices: PriceSlot[];
   images: VenueImage[];
   courts: Court[];

@@ -1,6 +1,15 @@
 # Kế hoạch phát triển — Cầu Lông Đà Nẵng (bản chờ duyệt)
 
-Ngày lập: 30/10/2026 · Trạng thái: **GĐ1 + GĐ5 ĐÃ TRIỂN KHAI 30/10/2026** (đã chạy 0008, 0009 trên Supabase; commit 979fff0 deploy Ready). Tiếp theo: GĐ2 (QR)
+Ngày lập: 30/10/2026 · Trạng thái: **GĐ1 + GĐ5 ĐÃ TRIỂN KHAI 30/10/2026** (đã chạy 0008, 0009 trên Supabase; commit 979fff0 deploy Ready). GĐ2 (QR) đã code xong, chờ duyệt triển khai (chạy 0010 trên Supabase, rồi deploy)
+
+### Tiến độ GĐ2 (30/10/2026)
+- Mã VietQR tự tạo trên máy chủ (`src/lib/vietqr.ts`), không gọi dịch vụ ngoài. Payload khớp từng ký tự với mã do img.vietqr.io tạo; ảnh PNG khoảng 5 KB, giải mã ngược khớp payload.
+- Danh mục 48 ngân hàng hỗ trợ chuyển khoản (`src/lib/banks.ts`, lấy từ api.vietqr.io). Form chủ sân chọn ngân hàng thay vì gõ tên; số tài khoản phải có 6–19 chữ số.
+- Migration `0010_payment_qr.sql`:
+  - Thêm cột `bank_bin` (không cho đọc công khai) và bỏ khoảng trắng trong số tài khoản.
+  - Tự gán BIN cho các tên ngân hàng thật thường gặp. 50 sân demo không được gán, để không tạo QR chuyển tới tài khoản thật không liên quan.
+- QR chỉ hiện khi lượt đặt đang giữ chỗ, kèm nút "Tải ảnh QR". Số tiền và nội dung lấy từ DB.
+- Kiểm thử: `test:db` 280/280 (thêm `payment-qr.test.mjs`), `tests/vietqr.test.mjs` 13/13, `tsc`, lint, build.
 
 ### Kết quả đo sau deploy (30/10/2026, hàm chạy ở sin1)
 Đo tuần tự, đã khởi động sẵn, thời gian tải xong:

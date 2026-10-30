@@ -31,6 +31,24 @@ function BankInfo({ payment }: { payment: PaymentInfo }) {
   );
 }
 
+/** Mã VietQR: quét bằng ứng dụng ngân hàng hoặc tải ảnh về rồi mở từ thư viện ảnh trong ứng dụng ngân hàng. */
+function PaymentQr({ payment }: { payment: PaymentInfo }) {
+  if (!payment.qr) return null;
+  return (
+    <div className="flex flex-col items-center gap-2 rounded-lg border border-slate-200 p-3" data-testid="payment-qr">
+      {/* Ảnh tạo sẵn trên máy chủ dạng data URL nên không qua next/image */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={payment.qr.image} alt={`Mã VietQR chuyển ${formatVnd(payment.amount)} với nội dung ${payment.content}`} width={220} height={220} className="h-[220px] w-[220px]" />
+      <p className="text-center text-xs text-slate-500">
+        Mở ứng dụng ngân hàng, chọn <b>Quét QR</b>: số tiền <b>{formatVnd(payment.amount)}</b> và nội dung <b>{payment.content}</b> được điền sẵn.
+      </p>
+      <a href={payment.qr.image} download={`QR-${payment.content}.png`} className={buttonClass("outline", "h-9 w-full")}>
+        Tải ảnh QR
+      </a>
+    </div>
+  );
+}
+
 /** PB17, PB18 - Khung thanh toán: đếm ngược, thông tin chuyển khoản, báo đã chuyển khoản, hủy. */
 export function PaymentPanel({ booking, payment, serverTime }: { booking: Booking; payment: PaymentInfo | null; serverTime: string }) {
   const router = useRouter();
@@ -96,8 +114,10 @@ export function PaymentPanel({ booking, payment, serverTime }: { booking: Bookin
             <div className="text-xs text-slate-500">Giữ đến {formatDateTime(booking.hold_expires_at)}</div>
           </div>
           <p className="text-sm text-slate-600">
-            Chuyển khoản đúng số tiền và nội dung bên dưới, rồi bấm <b>Tôi đã chuyển khoản</b> trước khi hết giờ. Chủ sân sẽ kiểm tra và xác nhận.
+            {payment?.qr ? "Quét mã QR hoặc chuyển khoản" : "Chuyển khoản"} đúng số tiền và nội dung bên dưới, rồi bấm <b>Tôi đã chuyển khoản</b> trước khi
+            hết giờ. Chủ sân sẽ kiểm tra và xác nhận.
           </p>
+          {payment && !timeUp ? <PaymentQr payment={payment} /> : null}
           {payment ? <BankInfo payment={payment} /> : null}
           <label className="block">
             <span className="mb-1.5 block text-xs font-semibold text-slate-600">Ghi chú cho chủ sân (không bắt buộc)</span>

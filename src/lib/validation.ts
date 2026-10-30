@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { bankByBin } from "./banks";
 import { BOOKING_RULES } from "./constants";
 import type { PriceSlot } from "./types";
 
@@ -59,13 +60,18 @@ export const venueSchema = z
     max_slots_per_booking: rule("max_slots_per_booking", "Số khung giờ tối đa mỗi lượt"),
     advance_days: rule("advance_days", "Số ngày đặt trước"),
     max_active_holds: rule("max_active_holds", "Số lượt giữ chỗ cùng lúc"),
-    bank_name: text("Ngân hàng nhận tiền", 100),
-    bank_account_number: z.string().trim().regex(/^[0-9 ]{6,24}$/, "Số tài khoản chỉ gồm chữ số"),
+    // Chọn ngân hàng từ danh mục VietQR: lưu mã BIN để tạo mã QR, tên ngân hàng lấy theo danh mục
+    bank_bin: z.string({ error: "Hãy chọn ngân hàng nhận tiền" }).refine((bin) => bankByBin(bin) !== null, "Hãy chọn ngân hàng nhận tiền"),
+    bank_account_number: z
+      .string()
+      .transform((value) => value.replace(/\s/g, ""))
+      .pipe(z.string().regex(/^\d{6,19}$/, "Số tài khoản gồm 6 đến 19 chữ số")),
     bank_account_name: text("Chủ tài khoản", 100),
     contact_phone: z.string().trim().max(20).optional().or(z.literal("")),
     description: z.string().trim().max(1000, "Mô tả quá dài").optional().or(z.literal("")),
   })
-  .refine((v) => v.close_time > v.open_time, { path: ["close_time"], message: "Giờ đóng cửa phải sau giờ mở cửa" });
+  .refine((v) => v.close_time > v.open_time, { path: ["close_time"], message: "Giờ đóng cửa phải sau giờ mở cửa" })
+  .transform((v) => ({ ...v, bank_name: bankByBin(v.bank_bin)?.short ?? "" }));
 
 export type VenueInput = z.infer<typeof venueSchema>;
 

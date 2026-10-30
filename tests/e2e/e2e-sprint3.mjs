@@ -40,7 +40,7 @@ const playerC = await signUp('Hoàng Văn Em', mail('playerc'), 'player', '09050
 const pBId = await uid(mail('playerb'));
 
 // ---------- Chủ sân đăng ký sân qua API (chờ duyệt)
-const venueBody = (o) => ({ name: o.name, ward_id: o.ward, address: o.address, latitude: o.lat, longitude: o.lng, court_count: o.courts ?? 2, open_time: '05:00', close_time: '22:00', hold_minutes: 10, bank_name: 'Ngân hàng mẫu ABC', bank_account_number: '0123456789', bank_account_name: 'TRAN VAN BINH', contact_phone: '0236123456', description: 'Sân thảm, có bãi giữ xe' });
+const venueBody = (o) => ({ name: o.name, ward_id: o.ward, address: o.address, latitude: o.lat, longitude: o.lng, court_count: o.courts ?? 2, open_time: '05:00', close_time: '22:00', hold_minutes: 10, bank_bin: '970436', bank_account_number: '0123456789', bank_account_name: 'TRAN VAN BINH', contact_phone: '0236123456', description: 'Sân thảm, có bãi giữ xe' });
 const mk = async (ctx, o, prices) => {
   const r = await api(ctx, 'POST', '/api/owner/venues', venueBody(o));
   if (r.status !== 201) throw new Error('venue ' + JSON.stringify(r.json));

@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { saveVenueAction, type VenueFormState } from "@/app/owner/actions";
 import { Map } from "@/components/map/map";
 import { Alert, Button, buttonClass, Field, Input, inputClass } from "@/components/ui/controls";
+import { BANKS } from "@/lib/banks";
 import { BOOKING_RULES } from "@/lib/constants";
 import type { Venue, Ward } from "@/lib/types";
 
@@ -110,8 +111,17 @@ export function VenueForm({ wards, venue, courtCount }: Props) {
           </Field>
         </fieldset>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Ngân hàng nhận tiền *" error={e.bank_name}>
-            <Input name="bank_name" defaultValue={val("bank_name")} required />
+          <Field label="Ngân hàng nhận tiền *" error={e.bank_bin} hint="Chọn đúng ngân hàng để người chơi quét mã VietQR chuyển khoản">
+            <select name="bank_bin" key={String(val("bank_bin"))} defaultValue={val("bank_bin")} className={inputClass} required>
+              <option value="" disabled>
+                Chọn ngân hàng
+              </option>
+              {BANKS.map((b) => (
+                <option key={b.bin} value={b.bin}>
+                  {b.short} - {b.name}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label="Số tài khoản *" error={e.bank_account_number}>
             <Input name="bank_account_number" inputMode="numeric" defaultValue={val("bank_account_number")} required />

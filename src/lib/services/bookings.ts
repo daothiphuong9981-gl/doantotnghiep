@@ -1,9 +1,11 @@
+import QRCode from "qrcode";
 import { dbFail, type DbError } from "@/lib/db-errors";
 import { describeDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/lib/auth";
 import { fail, ok, type Booking, type BookingItem, type BookingStatus, type PaymentInfo, type Result } from "@/lib/types";
 import { bookingSchema } from "@/lib/validation";
+import { canMakeVietQr, vietQrPayload } from "@/lib/vietqr";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 const COLUMNS =
@@ -86,9 +88,26 @@ export interface BookingView {
 /** Thông tin chuyển khoản qua hàm booking_payment_info: cột tài khoản ngân hàng không đọc trực tiếp được (0009). */
 async function paymentOf(supabase: Supabase, booking: Booking): Promise<PaymentInfo | null> {
   if (booking.status !== "holding" && booking.status !== "awaiting_confirmation") return null;
-  const { data } = await supabase.rpc("booking_payment_info", { p_booking_id: booking.id }).maybeSingle<PaymentInfo>();
+  const { data } = await supabase.rpc("booking_payment_info", { p_booking_id: booking.id }).maybeSingle<Omit<PaymentInfo, "qr">>();
   if (!data) return null;
-  return { ...data, amount: Number(data.amount) };
+  const amount = Number(data.amount);
+  return { ...data, amount, qr: booking.status === "holding" ? await paymentQr(data.bank_bin, data.account_number, amount, data.content) : null };
+}
+
+/**
+ * Ảnh QR (PNG dạng data URL) để hiển thị và tải về: ứng dụng ngân hàng mở ảnh từ thư viện là điền sẵn người nhận,
+ * số tiền, nội dung. Số tiền và nội dung lấy từ cơ sở dữ liệu. Thiếu BIN hoặc số tài khoản không hợp lệ thì bỏ qua.
+ */
+async function paymentQr(bin: string | null, accountNumber: string, amount: number, content: string): Promise<PaymentInfo["qr"]> {
+  const input = { bin: bin ?? undefined, accountNumber, amount, content };
+  if (!canMakeVietQr(input)) return null;
+  const payload = vietQrPayload(input);
+  try {
+    const image = await QRCode.toDataURL(payload, { errorCorrectionLevel: "M", margin: 2, width: 480 });
+    return { payload, image };
+  } catch {
+    return null;
+  }
 }
 
 /** PB14, PB15 - Giữ chỗ: tạo một lượt đặt gồm nhiều sân con, nhiều khung giờ. */
