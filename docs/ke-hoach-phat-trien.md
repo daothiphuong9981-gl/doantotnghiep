@@ -1,6 +1,16 @@
 # Kế hoạch phát triển — Cầu Lông Đà Nẵng (bản chờ duyệt)
 
-Ngày lập: 30/10/2026 · Trạng thái: **GĐ1 + GĐ5 ĐÃ TRIỂN KHAI 30/10/2026** (đã chạy 0008, 0009 trên Supabase; commit 979fff0 deploy Ready). GĐ2 (QR) ĐÃ TRIỂN KHAI 30/10/2026 (0010 đã chạy trên Supabase, commit 0c9b472 deploy Ready; còn cần quét thử bằng app ngân hàng). GĐ3 (email) ĐÃ TRIỂN KHAI 30/10/2026 (0011 đã chạy trên Supabase, commit 27828f0 deploy Ready, cron đã đăng ký). CHƯA gửi được thư cho tới khi bạn thêm 4 biến môi trường bên dưới rồi Redeploy. Tiếp theo: GĐ4 (đánh giá sân)
+Ngày lập: 30/10/2026 · Trạng thái: **GĐ1 + GĐ5 ĐÃ TRIỂN KHAI 30/10/2026** (đã chạy 0008, 0009 trên Supabase; commit 979fff0 deploy Ready). GĐ2 (QR) ĐÃ TRIỂN KHAI 30/10/2026 (0010 đã chạy trên Supabase, commit 0c9b472 deploy Ready; còn cần quét thử bằng app ngân hàng). GĐ3 (email) ĐÃ TRIỂN KHAI 30/10/2026 (0011 đã chạy trên Supabase, commit 27828f0 deploy Ready, cron đã đăng ký). CHƯA gửi được thư cho tới khi bạn thêm 4 biến môi trường bên dưới rồi Redeploy. GĐ4 (đánh giá sân) đã code xong, chờ duyệt triển khai
+
+### Tiến độ GĐ4 (30/10/2026)
+- Migration `0012_venue_reviews.sql` thêm bảng `venue_reviews` và tạo mọi RPC. Không ai đọc hay ghi trực tiếp vào bảng, nên không lộ người viết ẩn danh qua API.
+- Ai được đánh giá: mỗi lượt đặt 1 đánh giá, sửa được. Chỉ lượt đã xác nhận và đã chơi xong, trong 24 giờ sau khung giờ cuối. Quy tắc này kiểm tra trong DB.
+- Ẩn tên: người viết tự chọn. Trang sân và chủ sân đều thấy "Người chơi ẩn danh", chủ sân cũng không thấy mã lượt đặt. Chỉ quản trị viên thấy tên thật để xử lý vi phạm.
+- Chủ sân: trang `/owner/reviews` để xem và trả lời công khai.
+- Quản trị viên: trang `/admin/reviews` để ẩn (bắt buộc lý do) hoặc hiện lại. Đánh giá bị ẩn không tính vào điểm trung bình.
+- Hiển thị: điểm trung bình ★ trên thẻ sân và trang sân, danh sách đánh giá có nút "Xem thêm"; form đánh giá ở trang lượt đặt.
+- Thông báo: chủ sân nhận khi có đánh giá mới; người viết nhận khi chủ sân trả lời hoặc khi đánh giá bị ẩn.
+- Kiểm thử: `test:db` 355/355 (thêm `reviews.test.mjs`), unit 26/26, `tsc`, lint, build.
 
 ### Tiến độ GĐ3 (30/10/2026), chốt dùng 1 Gmail hệ thống
 - Thư được gửi khi chủ sân xác nhận đặt sân.

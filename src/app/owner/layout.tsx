@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/auth";
 const LINKS = [
   { href: "/owner/venues", label: "Sân của tôi" },
   { href: "/owner/bookings", label: "Lịch đặt sân" },
+  { href: "/owner/reviews", label: "Đánh giá" },
   { href: "/owner/stats", label: "Thống kê" },
   { href: "/account", label: "Tài khoản" },
 ];

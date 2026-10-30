@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
-    "test:db": "node supabase/tests/rls-sprint1.test.mjs && node supabase/tests/bookings-sprint2.test.mjs && node supabase/tests/admin-sprint3.test.mjs && node supabase/tests/notifications.test.mjs && node supabase/tests/import-san.test.mjs && node supabase/tests/demo-data.test.mjs && node supabase/tests/security-perf.test.mjs && node supabase/tests/payment-qr.test.mjs && node supabase/tests/email-outbox.test.mjs",
+    "test:db": "node supabase/tests/rls-sprint1.test.mjs && node supabase/tests/bookings-sprint2.test.mjs && node supabase/tests/admin-sprint3.test.mjs && node supabase/tests/notifications.test.mjs && node supabase/tests/import-san.test.mjs && node supabase/tests/demo-data.test.mjs && node supabase/tests/security-perf.test.mjs && node supabase/tests/payment-qr.test.mjs && node supabase/tests/email-outbox.test.mjs && node supabase/tests/reviews.test.mjs",
     "test:unit": "node tests/ai/filter.test.mjs && node tests/vietqr.test.mjs && node tests/email.test.mjs",
     "test:ai": "node tests/ai/eval.mjs",
     "postinstall": "node scripts/copy-maplibre-worker.mjs"

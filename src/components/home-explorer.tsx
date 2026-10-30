@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { RatingBadge } from "@/components/reviews/stars";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { BOOKING_RULES } from "@/lib/constants";
 import { addDays, formatVnd } from "@/lib/format";
@@ -226,6 +227,7 @@ export function HomeExplorer({
         </div>
         <div className="flex flex-wrap gap-1.5">
           <Chip tone="green">{v.min_price === null ? "Chưa có giá" : `Từ ${formatVnd(v.min_price)}/giờ`}</Chip>
+          <RatingBadge avg={v.rating_avg} count={v.rating_count} />
           {v.free_courts !== null && v.free_courts !== undefined ? (
             <Chip tone="blue">
               Còn {v.free_courts}/{v.court_count} sân lúc {applied.startTime}
@@ -464,6 +466,7 @@ export function HomeExplorer({
                     <h3 className="truncate text-sm font-bold">{v.name}</h3>
                     <p className="mb-2 mt-0.5 truncate text-xs text-slate-500">{v.address}</p>
                     <div className="flex flex-wrap gap-1.5">
+                      <RatingBadge avg={v.rating_avg} count={v.rating_count} />
                       {v.distance_km !== null && v.distance_km !== undefined ? (
                         <Chip tone="blue">
                           {formatKm(v.distance_km)} · ≈ {motorbikeMinutes(v.distance_km)} phút

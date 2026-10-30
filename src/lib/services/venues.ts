@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import { addDays, currentHourInVietnam, hhmm, isValidDate, isWeekend, todayInVietnam } from "@/lib/format";
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/env";
+import { ratingSummaries } from "@/lib/services/reviews";
 import { createClient } from "@/lib/supabase/server";
 import { BOOKING_RULES } from "@/lib/constants";
 import { fail, ok, type Court, type PriceSlot, type Result, type SlotState, type Venue, type VenueCard, type VenueImage, type Ward } from "@/lib/types";
@@ -87,7 +88,9 @@ export async function listVenues(filter: VenueFilter): Promise<Result<VenueCard[
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("search_venues", {
+  // Điểm đánh giá của mọi sân đã duyệt (khoảng 50 dòng) lấy song song với truy vấn tìm sân
+  const [{ data, error }, ratings] = await Promise.all([
+    supabase.rpc("search_venues", {
     p_q: q?.trim().slice(0, 100) || null,
     p_ward_id: wardId ?? null,
     p_min_price: minPrice ?? null,
@@ -97,9 +100,17 @@ export async function listVenues(filter: VenueFilter): Promise<Result<VenueCard[
     p_lat: lat ?? null,
     p_lng: lng ?? null,
     p_radius_km: hasPoint ? Math.min(Math.max(radiusKm ?? 30, 1), 100) : null,
-  });
+    }),
+    ratingSummaries(),
+  ]);
   if (error) return fail(500, "Không tải được danh sách sân");
-  return ok((data ?? []).map(toCard));
+  return ok(
+    (data ?? []).map((row: Record<string, unknown>) => {
+      const card = toCard(row);
+      const rating = ratings.get(card.id);
+      return { ...card, rating_avg: rating?.avg ?? null, rating_count: rating?.count ?? 0 };
+    }),
+  );
 }
 
 export interface VenueDetail {

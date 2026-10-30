@@ -73,6 +73,16 @@ export const venueSchema = z
   .refine((v) => v.close_time > v.open_time, { path: ["close_time"], message: "Giờ đóng cửa phải sau giờ mở cửa" })
   .transform((v) => ({ ...v, bank_name: bankByBin(v.bank_bin)?.short ?? "" }));
 
+export const reviewSchema = z.object({
+  rating: z.coerce.number({ error: "Hãy chọn số sao" }).int("Hãy chọn từ 1 đến 5 sao").min(1, "Hãy chọn từ 1 đến 5 sao").max(5, "Hãy chọn từ 1 đến 5 sao"),
+  comment: z.string().trim().max(1000, "Bình luận tối đa 1000 ký tự").optional().or(z.literal("")).or(z.null()),
+  is_anonymous: z.boolean().optional().default(false),
+});
+
+export const replySchema = z.object({
+  reply: z.string().trim().max(1000, "Câu trả lời tối đa 1000 ký tự").optional().or(z.literal("")).or(z.null()),
+});
+
 export type VenueInput = z.infer<typeof venueSchema>;
 
 export const priceSlotSchema = z

@@ -2,15 +2,18 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { PaymentPanel } from "@/components/booking/payment-panel";
 import { BookingItems, StatusChip } from "@/components/booking/status";
+import { ReviewForm } from "@/components/reviews/review-form";
 import { formatDateTime, formatVnd } from "@/lib/format";
 import { getBooking } from "@/lib/services/bookings";
+import { getMyBookingReview } from "@/lib/services/reviews";
 
 export const metadata = { title: "Thanh toán lượt đặt - Cầu Lông Đà Nẵng" };
 
 // PB18 - Trang thanh toán và chi tiết một lượt đặt
 export default async function BookingPage({ params }: PageProps<"/bookings/[id]">) {
   const { id } = await params;
-  const result = await getBooking(Number(id));
+  // Trạng thái đánh giá lấy song song (hàm cơ sở dữ liệu tự kiểm tra lượt đặt thuộc người đang đăng nhập)
+  const [result, review] = await Promise.all([getBooking(Number(id)), getMyBookingReview(Number(id))]);
   if (!result.ok) {
     if (result.status === 401) redirect(`/login?next=/bookings/${id}`);
     notFound();
@@ -48,8 +51,9 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
           </Link>
         </p>
       </section>
-      <aside className="w-full lg:w-[400px]">
+      <aside className="flex w-full flex-col gap-4 lg:w-[400px]">
         <PaymentPanel booking={booking} payment={payment} serverTime={server_time} />
+        {review.ok && review.data ? <ReviewForm bookingId={booking.id} state={review.data} /> : null}
       </aside>
     </div>
   );

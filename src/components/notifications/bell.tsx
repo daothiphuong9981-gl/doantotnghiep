@@ -17,6 +17,9 @@ const DOT: Record<NotificationKind, string> = {
   booking_cancelled: "bg-red-500",
   booking_expired: "bg-slate-400",
   venue_reviewed: "bg-violet-500",
+  review_new: "bg-yellow-500",
+  review_replied: "bg-brand-600",
+  review_hidden: "bg-red-500",
 };
 
 /** "3 phút trước", "2 giờ trước", quá 1 ngày thì ghi ngày. */

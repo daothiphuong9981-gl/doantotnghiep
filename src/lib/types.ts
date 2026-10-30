@@ -32,6 +32,9 @@ export interface VenueCard {
   distance_km?: number | null;
   /** Số sân con còn trống ở khung giờ đang lọc (chỉ có khi lọc theo ngày, giờ). */
   free_courts?: number | null;
+  /** Điểm đánh giá trung bình (1-5) và số đánh giá đang hiện; null khi chưa có đánh giá. */
+  rating_avg?: number | null;
+  rating_count?: number;
 }
 
 export type BookingStatus = "holding" | "awaiting_confirmation" | "confirmed" | "cancelled" | "expired";
@@ -121,7 +124,16 @@ export interface Venue {
   reject_reason: string | null;
 }
 
-export type NotificationKind = "booking_new" | "payment_reported" | "booking_confirmed" | "booking_cancelled" | "booking_expired" | "venue_reviewed";
+export type NotificationKind =
+  | "booking_new"
+  | "payment_reported"
+  | "booking_confirmed"
+  | "booking_cancelled"
+  | "booking_expired"
+  | "venue_reviewed"
+  | "review_new"
+  | "review_replied"
+  | "review_hidden";
 
 /** Thông báo trong ứng dụng (bảng notifications). */
 export interface AppNotification {
@@ -137,6 +149,82 @@ export interface AppNotification {
 
 /** Kết quả chung của tầng dịch vụ: thành công kèm dữ liệu, hoặc lỗi kèm mã HTTP. */
 export type Result<T> = { ok: true; data: T } | { ok: false; status: number; message: string };
+
+// ------------------------------------------------------------------ Đánh giá sân (0012_venue_reviews.sql)
+
+export interface RatingSummary {
+  avg: number | null;
+  count: number;
+}
+
+/** Đánh giá hiển thị công khai trên trang sân; author đã là "Người chơi ẩn danh" nếu người viết ẩn tên. */
+export interface PublicReview {
+  id: number;
+  rating: number;
+  comment: string | null;
+  author: string;
+  created_at: string;
+  updated_at: string;
+  owner_reply: string | null;
+  owner_replied_at: string | null;
+}
+
+export type ReviewStatus = "visible" | "hidden";
+
+/** Đánh giá của chính người chơi cho một lượt đặt. */
+export interface MyReview {
+  id: number;
+  rating: number;
+  comment: string | null;
+  is_anonymous: boolean;
+  status: ReviewStatus;
+  hidden_reason: string | null;
+  owner_reply: string | null;
+  owner_replied_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Trạng thái đánh giá của một lượt đặt: can_edit = đang trong 24 giờ sau giờ chơi và lượt đã xác nhận. */
+export interface MyReviewState {
+  can_edit: boolean;
+  window_starts_at: string | null;
+  deadline: string | null;
+  review: MyReview | null;
+}
+
+export interface OwnerReview {
+  id: number;
+  venue_id: number;
+  venue_name: string;
+  /** null khi người viết ẩn tên */
+  booking_code: string | null;
+  rating: number;
+  comment: string | null;
+  author: string;
+  status: ReviewStatus;
+  hidden_reason: string | null;
+  owner_reply: string | null;
+  owner_replied_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminReview {
+  id: number;
+  venue_id: number;
+  venue_name: string;
+  booking_code: string;
+  rating: number;
+  comment: string | null;
+  author: string;
+  is_anonymous: boolean;
+  status: ReviewStatus;
+  hidden_reason: string | null;
+  owner_reply: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 export const ok = <T,>(data: T): Result<T> => ({ ok: true, data });
 export const fail = (status: number, message: string): Result<never> => ({ ok: false, status, message });

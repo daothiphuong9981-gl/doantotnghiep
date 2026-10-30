@@ -2,10 +2,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SlotPicker } from "@/components/booking/slot-picker";
+import { ReviewList } from "@/components/reviews/review-list";
+import { RatingBadge, Stars } from "@/components/reviews/stars";
 import { Map } from "@/components/map/map";
 import { buttonClass, Chip, CourtPlaceholder } from "@/components/ui/controls";
 import { addDays, currentHourInVietnam, describeDate, formatVnd, isValidDate, todayInVietnam } from "@/lib/format";
 import { getSession } from "@/lib/auth";
+import { listVenueReviews } from "@/lib/services/reviews";
 import { getAvailability, getVenueDetail } from "@/lib/services/venues";
 import { imageUrl } from "@/lib/supabase/env";
 import { directionsUrl } from "@/lib/venue-filter";
@@ -18,7 +21,8 @@ export default async function VenuePage({ params, searchParams }: PageProps<"/ve
   const query = await searchParams;
   const venueId = Number(id);
   // Phiên đăng nhập không phụ thuộc thông tin sân: lấy song song, bớt một lượt chờ Supabase
-  const [detail, session] = await Promise.all([getVenueDetail(venueId), getSession()]);
+  // Đánh giá cũng không phụ thuộc thông tin sân: lấy cùng lúc
+  const [detail, session, reviews] = await Promise.all([getVenueDetail(venueId), getSession(), listVenueReviews(venueId)]);
   if (!detail.ok) notFound();
   const { venue, prices, images } = detail.data;
 
@@ -66,6 +70,7 @@ export default async function VenuePage({ params, searchParams }: PageProps<"/ve
             {venue.contact_phone ? ` · ${venue.contact_phone}` : ""}
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
+            {reviews.ok ? <RatingBadge avg={reviews.data.summary.avg} count={reviews.data.summary.count} /> : null}
             <Chip>{detail.data.courts.length} sân con</Chip>
             <Chip tone="orange">Giữ chỗ {venue.hold_minutes} phút</Chip>
             <Chip>Đặt trước tối đa {venue.advance_days} ngày</Chip>
@@ -102,6 +107,24 @@ export default async function VenuePage({ params, searchParams }: PageProps<"/ve
             )
           ) : (
             <p className="text-sm text-red-600">{availability.message}</p>
+          )}
+        </section>
+
+        <section id="danh-gia">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <h2 className="text-base font-bold">Đánh giá từ người đã thuê sân</h2>
+            {reviews.ok && reviews.data.summary.count > 0 && reviews.data.summary.avg !== null ? (
+              <span className="flex items-center gap-1.5 text-sm text-slate-600">
+                <Stars value={reviews.data.summary.avg} />
+                <b>{reviews.data.summary.avg.toLocaleString("vi-VN", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</b>
+                <span>({reviews.data.summary.count} đánh giá)</span>
+              </span>
+            ) : null}
+          </div>
+          {reviews.ok ? (
+            <ReviewList venueId={venueId} initial={reviews.data.reviews} hasMore={reviews.data.has_more} />
+          ) : (
+            <p className="text-sm text-red-600">{reviews.message}</p>
           )}
         </section>
       </div>

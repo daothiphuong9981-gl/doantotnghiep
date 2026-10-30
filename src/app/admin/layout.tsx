@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/auth";
 
 const LINKS = [
   { href: "/admin", label: "Duyệt và quản lý sân" },
+  { href: "/admin/reviews", label: "Kiểm duyệt đánh giá" },
   { href: "/admin/users", label: "Người dùng" },
   { href: "/admin/stats", label: "Thống kê hệ thống" },
   { href: "/account", label: "Tài khoản" },

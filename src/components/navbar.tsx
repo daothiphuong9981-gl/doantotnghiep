@@ -16,9 +16,9 @@ function linksFor(role: Role | undefined) {
   ];
   if (role === "player") links.push({ href: "/bookings", label: "Lịch đặt của tôi" });
   if (role === "owner")
-    links.push({ href: "/owner/venues", label: "Sân của tôi" }, { href: "/owner/bookings", label: "Lịch đặt sân" }, { href: "/owner/stats", label: "Thống kê" });
+    links.push({ href: "/owner/venues", label: "Sân của tôi" }, { href: "/owner/bookings", label: "Lịch đặt sân" }, { href: "/owner/reviews", label: "Đánh giá" }, { href: "/owner/stats", label: "Thống kê" });
   if (role === "admin")
-    links.push({ href: "/admin", label: "Duyệt sân" }, { href: "/admin/users", label: "Người dùng" }, { href: "/admin/stats", label: "Thống kê" });
+    links.push({ href: "/admin", label: "Duyệt sân" }, { href: "/admin/reviews", label: "Đánh giá" }, { href: "/admin/users", label: "Người dùng" }, { href: "/admin/stats", label: "Thống kê" });
   return links;
 }
 
