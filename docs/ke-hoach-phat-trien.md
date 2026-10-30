@@ -1,6 +1,6 @@
 # Kế hoạch phát triển — Cầu Lông Đà Nẵng (bản chờ duyệt)
 
-Ngày lập: 30/10/2026 · Trạng thái: **GĐ1 + GĐ5 ĐÃ TRIỂN KHAI 30/10/2026** (đã chạy 0008, 0009 trên Supabase; commit 979fff0 deploy Ready). GĐ2 (QR) ĐÃ TRIỂN KHAI 30/10/2026 (0010 đã chạy trên Supabase, commit 0c9b472 deploy Ready; còn cần quét thử bằng app ngân hàng). GĐ3 (email) đã code xong, chờ duyệt triển khai và chờ bạn thêm biến môi trường
+Ngày lập: 30/10/2026 · Trạng thái: **GĐ1 + GĐ5 ĐÃ TRIỂN KHAI 30/10/2026** (đã chạy 0008, 0009 trên Supabase; commit 979fff0 deploy Ready). GĐ2 (QR) ĐÃ TRIỂN KHAI 30/10/2026 (0010 đã chạy trên Supabase, commit 0c9b472 deploy Ready; còn cần quét thử bằng app ngân hàng). GĐ3 (email) ĐÃ TRIỂN KHAI 30/10/2026 (0011 đã chạy trên Supabase, commit 27828f0 deploy Ready, cron đã đăng ký). CHƯA gửi được thư cho tới khi bạn thêm 4 biến môi trường bên dưới rồi Redeploy. Tiếp theo: GĐ4 (đánh giá sân)
 
 ### Tiến độ GĐ3 (30/10/2026), chốt dùng 1 Gmail hệ thống
 - Thư được gửi khi chủ sân xác nhận đặt sân.
