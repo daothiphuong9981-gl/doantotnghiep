@@ -30,7 +30,7 @@ export function ReviewList({ venueId, initial, hasMore }: { venueId: number; ini
     }
   }
 
-  if (reviews.length === 0) return <p className="text-sm text-slate-500">Chưa có đánh giá. Người chơi đã thuê sân sẽ đánh giá được sau khi chơi xong.</p>;
+  if (reviews.length === 0) return <p className="text-sm text-slate-500">Chưa có đánh giá. Người chơi đã thuê sân đánh giá được khi chủ sân xác nhận đặt sân.</p>;
 
   return (
     <div className="flex flex-col gap-3">

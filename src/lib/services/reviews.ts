@@ -61,6 +61,15 @@ export async function getMyBookingReview(bookingId: number): Promise<Result<MyRe
   return ok((data as MyReviewState | null) ?? null);
 }
 
+/** Các lượt đặt của người chơi đang trong 24 giờ được đánh giá (0013), để danh sách lượt đặt hiện nút "Đánh giá sân". */
+export async function reviewableBookings(): Promise<Map<number, { deadline: string; reviewed: boolean }>> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("my_reviewable_bookings");
+  return new Map(
+    ((data ?? []) as { booking_id: number; deadline: string; reviewed: boolean }[]).map((r) => [Number(r.booking_id), { deadline: r.deadline, reviewed: r.reviewed }]),
+  );
+}
+
 /** Người chơi tạo hoặc sửa đánh giá cho lượt đặt của mình. */
 export async function submitReview(bookingId: number, input: unknown): Promise<Result<MyReviewState | null>> {
   if (!validId(bookingId)) return fail(404, "Không tìm thấy lượt đặt");

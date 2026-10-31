@@ -20,7 +20,7 @@ export default async function OwnerReviewsPage() {
       <div>
         <h1 className="text-2xl font-extrabold">Đánh giá sân</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Người chơi đánh giá được trong 24 giờ sau khi chơi xong lượt đã xác nhận. Câu trả lời của bạn hiện công khai ở trang sân.
+          Người chơi đánh giá được trong 24 giờ kể từ khi bạn xác nhận đã nhận tiền. Câu trả lời của bạn hiện công khai ở trang sân.
         </p>
       </div>
       {!result.ok ? <Alert>{result.message}</Alert> : null}

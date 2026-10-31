@@ -4,16 +4,17 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Alert, Button } from "@/components/ui/controls";
 import { formatDateTime } from "@/lib/format";
-import type { MyReviewState } from "@/lib/types";
+import type { BookingStatus, MyReviewState } from "@/lib/types";
 import { Stars } from "./stars";
 
 const LABELS = ["", "Rất tệ", "Chưa tốt", "Bình thường", "Tốt", "Tuyệt vời"];
 
 /**
- * Khung đánh giá trên trang lượt đặt: người chơi chấm sao, bình luận, chọn ẩn tên. Mở trong 24 giờ sau khi chơi xong
- * (máy chủ kiểm tra lại, giao diện chỉ để hướng dẫn). Hết hạn thì chỉ xem lại đánh giá đã gửi.
+ * Khung đánh giá trên trang lượt đặt: người chơi chấm sao, bình luận, chọn ẩn tên. Mở ngay khi chủ sân xác nhận thanh
+ * toán, trong 24 giờ (máy chủ kiểm tra lại, giao diện chỉ để hướng dẫn). Người chơi có thể bỏ qua; hết hạn thì chỉ xem
+ * lại đánh giá đã gửi.
  */
-export function ReviewForm({ bookingId, state }: { bookingId: number; state: MyReviewState }) {
+export function ReviewForm({ bookingId, bookingStatus, state }: { bookingId: number; bookingStatus: BookingStatus; state: MyReviewState }) {
   const router = useRouter();
   const review = state.review;
   const [editing, setEditing] = useState(!review);
@@ -25,7 +26,16 @@ export function ReviewForm({ bookingId, state }: { bookingId: number; state: MyR
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  if (!review && !state.can_edit) return null;
+  if (!review && !state.can_edit) {
+    // Đang giữ chỗ hoặc chờ xác nhận: báo trước để người chơi biết sẽ có chỗ đánh giá. Đã hủy, hết hạn, quá 24 giờ: ẩn.
+    if (bookingStatus !== "holding" && bookingStatus !== "awaiting_confirmation") return null;
+    return (
+      <section id="danh-gia" className="flex flex-col gap-1 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" data-testid="review-upcoming">
+        <h2 className="font-bold">★ Đánh giá sân</h2>
+        <p>Khi chủ sân xác nhận đã nhận tiền, bạn có thể chấm sao và bình luận về sân ngay tại đây trong 24 giờ (không bắt buộc).</p>
+      </section>
+    );
+  }
 
   async function save() {
     if (rating < 1) {
@@ -56,7 +66,7 @@ export function ReviewForm({ bookingId, state }: { bookingId: number; state: MyR
 
   const shown = hover || rating;
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5" data-testid="review-box">
+    <section id="danh-gia" className="flex scroll-mt-20 flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5" data-testid="review-box">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-base font-bold">{review ? "Đánh giá của bạn" : "Đánh giá sân"}</h2>
         {state.can_edit && state.deadline ? <span className="text-xs text-slate-500">Sửa được đến {formatDateTime(state.deadline)}</span> : null}
@@ -137,7 +147,7 @@ export function ReviewForm({ bookingId, state }: { bookingId: number; state: MyR
               Sửa đánh giá
             </Button>
           ) : (
-            <p className="text-xs text-slate-500">Đã hết thời gian sửa đánh giá (24 giờ sau giờ chơi).</p>
+            <p className="text-xs text-slate-500">Đã hết thời gian sửa đánh giá (24 giờ kể từ khi chủ sân xác nhận).</p>
           )}
         </div>
       ) : null}

@@ -28,6 +28,7 @@ ok('thư có lời chào theo tên, địa chỉ, SĐT sân, tổng tiền', mai
 ok('thư có từng khung giờ', mail.html.includes('18:00 - 19:00') && mail.html.includes('19:00 - 20:00') && mail.html.includes('Sân 2'));
 ok('giờ xác nhận theo giờ Việt Nam', mail.text.includes('Xác nhận lúc: 19:05 ngày 13/11/2026'), mail.text);
 ok('link tới trang lượt đặt (bỏ dấu / thừa)', mail.html.includes('href="https://caulongdanang.vercel.app/bookings/42"') && mail.text.includes('https://caulongdanang.vercel.app/bookings/42'));
+ok('mời đánh giá sân trong 24 giờ, link tới ô đánh giá', mail.html.includes('href="https://caulongdanang.vercel.app/bookings/42#danh-gia"') && mail.text.includes('/bookings/42#danh-gia'));
 ok('có bản chữ thuần cho ứng dụng thư không hiện HTML', mail.text.includes('- Thứ bảy, 14/11/2026, 18:00 - 19:00, Sân 2: 120.000 đ') && mail.text.includes('Tổng tiền đã thanh toán: 240.000 đ'));
 
 // Dữ liệu do chủ sân nhập (tên sân, địa chỉ) không được chèn HTML hay xuống dòng vào tiêu đề

@@ -5,6 +5,7 @@ import { BookingItems, StatusChip } from "@/components/booking/status";
 import { Alert, buttonClass } from "@/components/ui/controls";
 import { formatDateTime, formatVnd } from "@/lib/format";
 import { listMyBookings } from "@/lib/services/bookings";
+import { reviewableBookings } from "@/lib/services/reviews";
 
 export const metadata = { title: "Lịch đặt của tôi - Cầu Lông Đà Nẵng" };
 
@@ -19,7 +20,8 @@ const TABS = [
 export default async function MyBookingsPage({ searchParams }: PageProps<"/bookings">) {
   const query = await searchParams;
   const scope = typeof query.scope === "string" && TABS.some((t) => t.scope === query.scope) ? query.scope : "";
-  const result = await listMyBookings(scope || undefined);
+  // Lượt đang mở đánh giá lấy song song, để hiện nút "Đánh giá sân" ngay trên danh sách
+  const [result, reviewable] = await Promise.all([listMyBookings(scope || undefined), reviewableBookings()]);
   if (!result.ok && result.status === 401) redirect("/login?next=/bookings");
 
   return (
@@ -74,10 +76,21 @@ export default async function MyBookingsPage({ searchParams }: PageProps<"/booki
                   {b.cancelled_by_owner ? "Chủ sân hủy" : "Bạn đã hủy"}. Lý do: {b.cancel_reason}
                 </p>
               ) : null}
-              <div className="mt-3 flex items-center gap-3 border-t border-slate-100 pt-3">
+              <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3">
                 <span className="flex-1 text-sm">
                   Tổng tiền: <b className="text-brand-700">{formatVnd(b.total_amount)}</b>
                 </span>
+                {reviewable.has(b.id) ? (
+                  reviewable.get(b.id)!.reviewed ? (
+                    <Link href={`/bookings/${b.id}#danh-gia`} className="text-sm font-semibold text-brand-700 hover:underline">
+                      ★ Đã đánh giá · sửa được đến {formatDateTime(reviewable.get(b.id)!.deadline)}
+                    </Link>
+                  ) : (
+                    <Link href={`/bookings/${b.id}#danh-gia`} className={buttonClass("primary", "h-9")} data-testid="review-cta">
+                      ★ Đánh giá sân
+                    </Link>
+                  )
+                ) : null}
                 <Link href={`/bookings/${b.id}`} className={buttonClass(b.status === "holding" ? "primary" : "outline", "h-9")}>
                   {b.status === "holding" ? "Thanh toán" : "Chi tiết"}
                 </Link>

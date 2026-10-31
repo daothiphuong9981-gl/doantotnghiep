@@ -34,7 +34,7 @@ for (const f of ['0002_bookings.sql', '0004_venue_rules.sql', '0005_admin_stats_
 // Giống Supabase thật: bảng mới mặc định cấp quyền cho anon/authenticated; 0012 phải tự thu hồi
 await db.exec(`alter default privileges in schema public grant all on tables to anon, authenticated;`);
 await db.exec(`grant select on all tables in schema public to anon, authenticated;`);
-for (const f of ['0008_performance.sql', '0009_security.sql', '0010_payment_qr.sql', '0011_email_outbox.sql', '0012_venue_reviews.sql']) await db.exec(file('../migrations/' + f));
+for (const f of ['0008_performance.sql', '0009_security.sql', '0010_payment_qr.sql', '0011_email_outbox.sql', '0012_venue_reviews.sql', '0013_review_reminders.sql']) await db.exec(file('../migrations/' + f));
 
 const mk = async (email, role, name) => (await q(`insert into auth.users (email, raw_user_meta_data) values ($1, $2) returning id`,
   [email, JSON.stringify({ full_name: name ?? email, phone: '0900000000', role })]))[0].id;
@@ -58,34 +58,37 @@ const courtOf = async (v) => (await q(`select id from courts where venue_id = $1
 
 let hour = 5;
 const day = (await q(`select (current_date + 3)::text d`))[0].d;
-/** Tạo lượt đặt rồi đưa tới trạng thái mong muốn; endedAgo: kết thúc khung giờ cuối cách đây bao lâu (null = tương lai). */
-const booking = async (uid, v, { status = 'confirmed', endedAgo = '2 hours' } = {}) => {
+/**
+ * Tạo lượt đặt (khung giờ ở tương lai) rồi đưa tới trạng thái mong muốn.
+ * confirmedAgo: chủ sân xác nhận cách đây bao lâu (0013: cửa sổ đánh giá tính từ lúc xác nhận, không phụ thuộc giờ chơi).
+ */
+const booking = async (uid, v, { status = 'confirmed', confirmedAgo = '2 hours' } = {}) => {
   const items = JSON.stringify([{ court_id: await courtOf(v), booking_date: day, start_time: `${String(hour++).padStart(2, '0')}:00` }]);
   const id = (await as(uid, () => q(`select create_booking($1, $2::jsonb) r`, [v, items])))[0].r.id;
   if (status !== 'holding') await as(uid, () => q(`select report_payment($1, null)`, [id]));
-  if (status === 'confirmed') await as(v === venue ? owner : owner2, () => q(`select confirm_payment($1)`, [id]));
-  if (status === 'cancelled') await as(v === venue ? owner : owner2, () => q(`select cancel_booking($1, 'x')`, [id]));
-  if (endedAgo) {
-    // Đặt khung giờ (60 phút) sao cho kết thúc cách đây endedAgo
-    await db.exec(`update booking_items set booking_date = (vn_now() - interval '1 hour' - interval '${endedAgo}')::date,
-                   start_time = (vn_now() - interval '1 hour' - interval '${endedAgo}')::time where booking_id = ${id}`);
+  if (status === 'confirmed') {
+    await as(v === venue ? owner : owner2, () => q(`select confirm_payment($1)`, [id]));
+    await db.exec(`update bookings set confirmed_at = now() - interval '${confirmedAgo}' where id = ${id}`);
   }
+  if (status === 'cancelled') await as(v === venue ? owner : owner2, () => q(`select cancel_booking($1, 'x')`, [id]));
   return id;
 };
 const submit = (uid, id, rating, comment = null, anon = false) => as(uid, () => q(`select submit_review($1, $2, $3, $4) r`, [id, rating, comment, anon]));
 
 // ---------------------------------------------------------------- Ai được đánh giá
 const played = await booking(player, venue);
-const future = await booking(player, venue, { endedAgo: null });
+const justConfirmed = await booking(player, venue, { confirmedAgo: '1 minute' });
 const awaiting = await booking(player, venue, { status: 'awaiting_confirmation' });
-const cancelled = await booking(player, venue, { status: 'cancelled', endedAgo: null });
-const tooLate = await booking(player, venue, { endedAgo: '25 hours' });
-const justInTime = await booking(player, venue, { endedAgo: '23 hours 50 minutes' });
+const cancelled = await booking(player, venue, { status: 'cancelled' });
+const tooLate = await booking(player, venue, { confirmedAgo: '25 hours' });
+const justInTime = await booking(player, venue, { confirmedAgo: '23 hours 50 minutes' });
 
-ok('lượt chưa chơi: không đánh giá được', /Bạn đánh giá được sau khi chơi xong/.test(await detailOf(() => submit(player, future, 5))));
+ok('vừa xác nhận, chưa tới giờ chơi: đánh giá được ngay', (await submit(player, justConfirmed, 5))[0].r > 0);
+// Dọn đánh giá phụ này để các phép đếm bên dưới (danh sách, điểm trung bình, thông báo) giữ nguyên
+await db.exec(`delete from venue_reviews where booking_id = ${justConfirmed}; delete from notifications where booking_id = ${justConfirmed} and kind = 'review_new';`);
 ok('lượt chờ xác nhận: không đánh giá được', /đã được chủ sân xác nhận/.test(await detailOf(() => submit(player, awaiting, 5))));
 ok('lượt đã hủy: không đánh giá được', /INVALID_STATE/.test(await detailOf(() => submit(player, cancelled, 5))));
-ok('quá 24 giờ sau giờ chơi: không đánh giá được', /quá 24 giờ/.test(await detailOf(() => submit(player, tooLate, 5))));
+ok('quá 24 giờ sau khi xác nhận: không đánh giá được (bỏ qua thì hết hạn)', /quá 24 giờ/.test(await detailOf(() => submit(player, tooLate, 5))));
 ok('lượt của người khác: không đánh giá được', /NOT_FOUND/.test(await detailOf(() => submit(player2, played, 5))));
 ok('chủ sân không đánh giá được', /FORBIDDEN/.test(await detailOf(() => submit(owner, played, 5))));
 ok('khách chưa đăng nhập không gọi được', (await detailOf(() => as(null, () => q(`select submit_review($1, 5)`, [played]), 'anon'))) !== null);
@@ -93,10 +96,11 @@ ok('số sao ngoài 1-5: báo lỗi', /1 đến 5 sao/.test(await detailOf(() =>
 ok('bình luận quá 1000 ký tự: báo lỗi', /1000 ký tự/.test(await detailOf(() => submit(player, played, 4, 'a'.repeat(1001)))));
 
 const st = async (uid, id) => (await as(uid, () => q(`select my_booking_review($1) s`, [id])))[0].s;
-ok('trạng thái: lượt đã chơi trong 24 giờ thì mở form', (await st(player, played)).can_edit === true && (await st(player, played)).review === null);
-ok('trạng thái: lượt quá 24 giờ thì khóa', (await st(player, tooLate)).can_edit === false);
+ok('trạng thái: đã xác nhận trong 24 giờ thì mở form', (await st(player, played)).can_edit === true && (await st(player, played)).review === null);
+ok('trạng thái: quá 24 giờ thì khóa', (await st(player, tooLate)).can_edit === false);
+ok('trạng thái: chờ xác nhận thì chưa mở', (await st(player, awaiting)).can_edit === false && (await st(player, awaiting)).deadline === null);
 const dl = Date.parse((await st(player, played)).deadline);
-ok('hạn đánh giá có múi giờ, đúng khoảng 22 giờ nữa (kết thúc 2 giờ trước)', Math.abs(dl - Date.now() - 22 * 3600e3) < 120e3, (await st(player, played)).deadline);
+ok('hạn đánh giá = lúc xác nhận + 24 giờ (xác nhận 2 giờ trước -> còn 22 giờ)', Math.abs(dl - Date.now() - 22 * 3600e3) < 120e3, (await st(player, played)).deadline);
 ok('trạng thái: lượt người khác trả null', (await st(player2, played)) === null);
 
 // ---------------------------------------------------------------- Tạo, sửa
@@ -108,7 +112,7 @@ s = await st(player, played);
 ok('sửa đánh giá: vẫn một đánh giá, cập nhật nội dung và ẩn tên', rid2 === rid && s.review.rating === 5 && s.review.comment === 'Sửa lại: rất tốt' && s.review.is_anonymous === true);
 ok('mỗi lượt đặt chỉ một đánh giá', (await q(`select count(*)::int n from venue_reviews where booking_id = $1`, [played]))[0].n === 1);
 ok('sát hạn 24 giờ vẫn đánh giá được', (await submit(player, justInTime, 3, 'Tạm được'))[0].r > 0);
-await db.exec(`update booking_items set booking_date = booking_date - 2 where booking_id = ${played}`);
+await db.exec(`update bookings set confirmed_at = confirmed_at - interval '2 days' where id = ${played}`);
 ok('quá 24 giờ thì không sửa được nữa', /quá 24 giờ/.test(await detailOf(() => submit(player, played, 1))));
 
 // Lượt thứ hai của người chơi khác tại cùng sân, hiện tên
@@ -175,5 +179,32 @@ ok('người chơi nhận thông báo khi đánh giá bị ẩn, có lý do', (a
 await db.exec(`delete from auth.users where id = '${player2}'`).catch(() => {});
 await db.exec(`update venue_reviews set player_id = null where id = ${r2}`);
 ok('tài khoản đã xóa: đánh giá vẫn hiện với tên chung', (await as(null, () => q(`select author from list_venue_reviews($1) where id = $2`, [venue, r2]), 'anon'))[0]?.author === 'Người chơi');
+
+// ---------------------------------------------------------------- 0013: nhắc đánh giá, danh sách lượt cần đánh giá
+const p3 = await mk('cuong@x', 'player', 'Lê Văn Cường');
+const fresh = await booking(p3, venue, { confirmedAgo: '30 minutes' });
+const nearDeadline = await booking(p3, venue, { confirmedAgo: '22 hours' });
+const expired = await booking(p3, venue, { confirmedAgo: '25 hours' });
+const unconfirmed = await booking(p3, venue, { status: 'awaiting_confirmation' });
+const doneReview = await booking(p3, venue, { confirmedAgo: '22 hours 30 minutes' });
+await submit(p3, doneReview, 5);
+
+const rv = await as(p3, () => q(`select * from my_reviewable_bookings() order by booking_id`));
+ok('lượt cần đánh giá: vừa xác nhận, sắp hết hạn, đã đánh giá (còn sửa được); không có lượt quá hạn, chưa xác nhận', JSON.stringify(rv.map((r) => r.booking_id)) === JSON.stringify([fresh, nearDeadline, doneReview].sort((a, b) => a - b)), JSON.stringify(rv));
+ok('đánh dấu lượt đã đánh giá', rv.find((r) => r.booking_id === doneReview)?.reviewed === true && rv.find((r) => r.booking_id === fresh)?.reviewed === false);
+ok('hạn đánh giá có múi giờ (xác nhận 30 phút trước -> còn 23,5 giờ)', Math.abs(Date.parse(rv.find((r) => r.booking_id === fresh).deadline) - Date.now() - 23.5 * 3600e3) < 120e3);
+ok('người khác không thấy lượt của p3', (await as(player, () => q(`select * from my_reviewable_bookings()`))).every((r) => ![fresh, nearDeadline, doneReview].includes(r.booking_id)));
+ok('khách không gọi được', (await detailOf(() => as(null, () => q(`select * from my_reviewable_bookings()`), 'anon'))) !== null);
+ok('người dùng không tự gọi send_review_reminders được', (await detailOf(() => as(p3, () => q(`select send_review_reminders()`)))) !== null);
+
+await q(`select send_review_reminders()`);
+const rem = await q(`select booking_id, title, body, link from notifications where user_id = $1 and kind = 'review_reminder' order by booking_id`, [p3]);
+ok('nhắc lượt còn dưới 3 giờ là hết hạn mà chưa đánh giá', rem.some((n) => n.booking_id === nearDeadline), JSON.stringify(rem));
+ok('link nhắc tới thẳng ô đánh giá', rem.find((n) => n.booking_id === nearDeadline)?.link === `/bookings/${nearDeadline}#danh-gia`);
+ok('không nhắc lượt mới xác nhận (đã có thông báo xác nhận), quá hạn, chưa xác nhận, đã đánh giá', !rem.some((n) => [fresh, expired, unconfirmed, doneReview].includes(n.booking_id)), JSON.stringify(rem.map((n) => n.booking_id)));
+const confirmedNote = await q(`select body, link from notifications where user_id = $1 and kind = 'booking_confirmed' and booking_id = $2`, [p3, fresh]);
+ok('thông báo xác nhận mời đánh giá trong 24 giờ, link tới ô đánh giá', confirmedNote[0]?.body.includes('đánh giá sân trong 24 giờ') && confirmedNote[0]?.link === `/bookings/${fresh}#danh-gia`, JSON.stringify(confirmedNote[0]));
+await q(`select send_review_reminders()`);
+ok('chạy lại không nhắc trùng', (await q(`select count(*)::int n from notifications where user_id = $1 and kind = 'review_reminder'`, [p3]))[0].n === rem.length);
 
 console.log(process.exitCode ? '\nCÓ KIỂM TRA LỖI' : `\nTẤT CẢ ĐẠT (${passed} kiểm tra)`);

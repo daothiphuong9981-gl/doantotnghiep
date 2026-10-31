@@ -20,6 +20,7 @@ const DOT: Record<NotificationKind, string> = {
   review_new: "bg-yellow-500",
   review_replied: "bg-brand-600",
   review_hidden: "bg-red-500",
+  review_reminder: "bg-amber-400",
 };
 
 /** "3 phút trước", "2 giờ trước", quá 1 ngày thì ghi ngày. */

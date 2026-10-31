@@ -120,6 +120,7 @@ export function renderBookingConfirmed(p: BookingEmailPayload, appUrl: string): 
       <p style="margin:24px 0">
         <a href="${escapeHtml(link)}" style="background:#15803d;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:bold">Xem lượt đặt</a>
       </p>
+      <p style="margin:0 0 16px;font-size:14px">★ Bạn có thể <a href="${escapeHtml(link)}#danh-gia" style="color:#15803d;font-weight:bold">đánh giá sân</a> trong 24 giờ (không bắt buộc).</p>
       <p style="margin:0;color:#64748b;font-size:13px">Cần đổi lịch hoặc hỏi thêm? Trả lời thư này để liên hệ trực tiếp chủ sân.</p>
     </div>
     <p style="color:#94a3b8;font-size:12px;text-align:center;margin-top:12px">Thư tự động từ hệ thống Cầu Lông Đà Nẵng.</p>
@@ -140,6 +141,7 @@ export function renderBookingConfirmed(p: BookingEmailPayload, appUrl: string): 
     `Tổng tiền đã thanh toán: ${vnd(p.total_amount)}`,
     "",
     `Xem lượt đặt: ${link}`,
+    `Đánh giá sân trong 24 giờ (không bắt buộc): ${link}#danh-gia`,
     "Trả lời thư này để liên hệ trực tiếp chủ sân.",
   ].join("\n");
 

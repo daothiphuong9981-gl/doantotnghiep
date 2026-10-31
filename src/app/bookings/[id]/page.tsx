@@ -53,7 +53,7 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
       </section>
       <aside className="flex w-full flex-col gap-4 lg:w-[400px]">
         <PaymentPanel booking={booking} payment={payment} serverTime={server_time} />
-        {review.ok && review.data ? <ReviewForm bookingId={booking.id} state={review.data} /> : null}
+        {review.ok && review.data ? <ReviewForm bookingId={booking.id} bookingStatus={booking.status} state={review.data} /> : null}
       </aside>
     </div>
   );

@@ -27,7 +27,7 @@ alter default privileges in schema public grant execute on functions to anon, au
 `);
 await db.exec(file('../migrations/0001_init.sql'));
 await db.exec(file('../seed.sql'));
-for (const f of ['0002_bookings.sql', '0004_venue_rules.sql', '0005_admin_stats_ai.sql', '0006_notifications.sql', '0007_overdue_awaiting.sql', '0008_performance.sql', '0009_security.sql', '0010_payment_qr.sql', '0011_email_outbox.sql', '0012_venue_reviews.sql']) await db.exec(file('../migrations/' + f));
+for (const f of ['0002_bookings.sql', '0004_venue_rules.sql', '0005_admin_stats_ai.sql', '0006_notifications.sql', '0007_overdue_awaiting.sql', '0008_performance.sql', '0009_security.sql', '0010_payment_qr.sql', '0011_email_outbox.sql', '0012_venue_reviews.sql', '0013_review_reminders.sql']) await db.exec(file('../migrations/' + f));
 await db.exec(`grant select, insert, update, delete on all tables in schema public to authenticated; grant usage, select on all sequences in schema public to authenticated;`);
 // RLS của 0006 phải tự đứng vững: thu hồi lại quyền ghi thừa vừa cấp chung cho bảng notifications
 await db.exec(`revoke insert, update, delete on public.notifications from authenticated;`);
@@ -69,7 +69,7 @@ o = await inbox(owner);
 ok('báo chuyển khoản: chủ sân nhận, link tới tab chờ xác nhận', o.at(-1).kind === 'payment_reported' && o.at(-1).link === '/owner/bookings?status=awaiting_confirmation', o.at(-1).body);
 await as(owner, () => q(`select confirm_payment($1)`, [id1]));
 let p = await inbox(player);
-ok('xác nhận: người chơi nhận "Chủ sân đã xác nhận", link tới lượt đặt', p.length === 1 && p[0].kind === 'booking_confirmed' && p[0].link === `/bookings/${id1}`, p[0]?.body);
+ok('xác nhận: người chơi nhận "Chủ sân đã xác nhận", link tới lượt đặt', p.length === 1 && p[0].kind === 'booking_confirmed' && p[0].link === `/bookings/${id1}#danh-gia` && p[0].body.includes("đánh giá sân trong 24 giờ"), p[0]?.body);
 
 // 4. Chủ sân hủy (kèm lý do) -> người chơi; 5. người chơi hủy -> chủ sân
 const [{ r: b2 }] = await book(player, courts[1], '20:00');

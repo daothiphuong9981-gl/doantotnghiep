@@ -34,7 +34,7 @@ for (const f of ['0002_bookings.sql', '0004_venue_rules.sql', '0005_admin_stats_
 // Giống Supabase thật: bảng mới mặc định cấp quyền cho anon/authenticated; 0011 phải tự thu hồi
 await db.exec(`alter default privileges in schema public grant all on tables to anon, authenticated;`);
 await db.exec(`grant select on all tables in schema public to anon, authenticated;`);
-for (const f of ['0008_performance.sql', '0009_security.sql', '0010_payment_qr.sql', '0011_email_outbox.sql', '0012_venue_reviews.sql']) await db.exec(file('../migrations/' + f));
+for (const f of ['0008_performance.sql', '0009_security.sql', '0010_payment_qr.sql', '0011_email_outbox.sql', '0012_venue_reviews.sql', '0013_review_reminders.sql']) await db.exec(file('../migrations/' + f));
 
 const mk = async (email, role, name) => (await q(`insert into auth.users (email, raw_user_meta_data) values ($1, $2) returning id`,
   [email, JSON.stringify({ full_name: name ?? email, phone: '0900000000', role })]))[0].id;

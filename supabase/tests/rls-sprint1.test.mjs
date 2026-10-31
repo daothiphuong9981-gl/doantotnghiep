@@ -21,7 +21,7 @@ alter default privileges in schema public grant execute on functions to anon, au
 await run('migration', fs.readFileSync(new URL('../migrations/0001_init.sql', import.meta.url),'utf8'));
 await run('seed', fs.readFileSync(new URL('../seed.sql', import.meta.url),'utf8'));
 // Các migration sau định nghĩa lại một số hàm (venues_guard...): nạp đủ để kiểm tra hồi quy
-for (const f of ['0002_bookings.sql', '0004_venue_rules.sql', '0005_admin_stats_ai.sql', '0006_notifications.sql', '0007_overdue_awaiting.sql', '0008_performance.sql', '0009_security.sql', '0010_payment_qr.sql', '0011_email_outbox.sql', '0012_venue_reviews.sql']) await run(f, fs.readFileSync(new URL('../migrations/' + f, import.meta.url), 'utf8'));
+for (const f of ['0002_bookings.sql', '0004_venue_rules.sql', '0005_admin_stats_ai.sql', '0006_notifications.sql', '0007_overdue_awaiting.sql', '0008_performance.sql', '0009_security.sql', '0010_payment_qr.sql', '0011_email_outbox.sql', '0012_venue_reviews.sql', '0013_review_reminders.sql']) await run(f, fs.readFileSync(new URL('../migrations/' + f, import.meta.url), 'utf8'));
 const q = async (sql, p) => (await db.query(sql, p)).rows;
 const as = async (uid, role, fn) => { await db.exec(`set role ${role}; select set_config('request.jwt.claim.sub', '${uid ?? ''}', false);`); try { return await fn(); } finally { await db.exec(`reset role; select set_config('request.jwt.claim.sub', '', false);`); } };
 const expectFail = async (label, fn) => { try { await fn(); console.log('FAIL (should be rejected):', label); process.exitCode = 1; } catch (e) { console.log('ok rejected:', label, '-', e.message.slice(0, 70)); } };

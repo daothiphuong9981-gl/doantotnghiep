@@ -133,7 +133,8 @@ export type NotificationKind =
   | "venue_reviewed"
   | "review_new"
   | "review_replied"
-  | "review_hidden";
+  | "review_hidden"
+  | "review_reminder";
 
 /** Thông báo trong ứng dụng (bảng notifications). */
 export interface AppNotification {
