@@ -1,4 +1,4 @@
-// PB23 - Chạy bộ 20 câu hỏi mẫu với Gemini thật và so với đáp án đã soạn (yêu cầu đạt ít nhất 16/20).
+// PB23 - Chạy bộ câu hỏi mẫu (tests/ai/questions.json) với Gemini thật và so với đáp án đã soạn (yêu cầu đạt ít nhất 80%, như 16/20 ban đầu).
 // Cách chạy (Node 22.18 trở lên):  GEMINI_API_KEY=<khóa> npm run test:ai
 // Mỗi câu gọi Gemini một lần; có khoảng nghỉ giữa các câu để không vượt giới hạn số yêu cầu mỗi phút.
 import fs from 'fs';
@@ -46,10 +46,12 @@ for (const [i, item] of questions.entries()) {
       check('gần tôi', filter.near_me, e.near_me);
       check('bán kính', filter.radius_km, e.radius_km);
       check('rẻ hơn', cheaper, e.cheaper);
+      check('số sân', filter.min_courts, e.min_courts);
+      check('giờ liên tục', filter.consecutive_hours, e.consecutive_hours);
       if (e.keyword && !(filter.keyword ?? '').toLowerCase().includes(e.keyword.toLowerCase())) wrong.push(`từ khóa: ${filter.keyword}, đáp án chứa "${e.keyword}"`);
       // Điều kiện không có trong đáp án thì không được tự thêm
-      for (const key of ['ward_name', 'date', 'max_price', 'min_price']) {
-        const expected = { ward_name: e.ward, date: e.date, max_price: e.max_price, min_price: e.min_price }[key];
+      for (const key of ['ward_name', 'date', 'max_price', 'min_price', 'min_courts']) {
+        const expected = { ward_name: e.ward, date: e.date, max_price: e.max_price, min_price: e.min_price, min_courts: e.min_courts }[key];
         if (expected === undefined && filter[key] !== null && !(key === 'max_price' && e.cheaper)) wrong.push(`tự thêm ${key} = ${filter[key]}`);
       }
     }
@@ -59,5 +61,6 @@ for (const [i, item] of questions.entries()) {
   console.log(`${String(i + 1).padStart(2)}. ${ok ? 'ĐẠT ' : 'SAI '} ${item.q}${detail ? `\n      -> ${detail}` : ''}`);
   await sleep(Number(process.env.AI_EVAL_DELAY_MS ?? 4500));
 }
-console.log(`\nKết quả: ${pass}/${questions.length} câu đúng (yêu cầu của PB23: ít nhất 16/20).`);
-process.exit(pass >= 16 ? 0 : 1);
+const required = Math.ceil(questions.length * 0.8);
+console.log(`\nKết quả: ${pass}/${questions.length} câu đúng (yêu cầu của PB23: ít nhất ${required}/${questions.length}, tức 80%).`);
+process.exit(pass >= required ? 0 : 1);

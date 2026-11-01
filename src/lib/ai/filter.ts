@@ -21,6 +21,10 @@ export interface AiFilter {
   max_price: number | null;
   near_me: boolean;
   radius_km: number | null;
+  /** Số sân con cần trống cùng một lúc (ví dụ "cần 8 sân để tổ chức giải"); null nếu không nêu */
+  min_courts: number | null;
+  /** Số giờ liên tục cần dùng trên cùng các sân con (ví dụ "từ 7h đến 9h" = 2, "chơi 3 tiếng" = 3); null nếu không nêu */
+  consecutive_hours: number | null;
 }
 
 export const EMPTY_FILTER: AiFilter = {
@@ -34,6 +38,8 @@ export const EMPTY_FILTER: AiFilter = {
   max_price: null,
   near_me: false,
   radius_km: null,
+  min_courts: null,
+  consecutive_hours: null,
 };
 
 /** Kết quả thô mô hình trả về (chưa tin được). */
@@ -48,6 +54,8 @@ export interface RawExtraction {
   max_price?: unknown;
   near_me?: unknown;
   radius_km?: unknown;
+  min_courts?: unknown;
+  consecutive_hours?: unknown;
   cheaper?: unknown;
 }
 
@@ -82,6 +90,12 @@ export const EXTRACTION_SCHEMA = {
     max_price: { type: "INTEGER", nullable: true, description: "Giá cao nhất mỗi giờ, đơn vị đồng" },
     near_me: { type: "BOOLEAN", description: "true nếu người dùng muốn sân gần vị trí của họ" },
     radius_km: { type: "NUMBER", nullable: true, description: "Bán kính tìm kiếm tính bằng km nếu người dùng nêu" },
+    min_courts: { type: "INTEGER", nullable: true, description: "Số sân con người dùng cần trống cùng lúc, chỉ khi có con số (ví dụ 'cần 8 sân', 'thuê 4 sân')" },
+    consecutive_hours: {
+      type: "INTEGER",
+      nullable: true,
+      description: "Số giờ liên tục cần chơi: bằng độ dài khung khi người dùng nêu rõ giờ bắt đầu và kết thúc ('từ 7h đến 9h' = 2), hoặc thời lượng nêu ra ('chơi 2 tiếng' = 2)",
+    },
     cheaper: { type: "BOOLEAN", description: "true nếu người dùng muốn rẻ hơn kết quả trước mà không nêu con số" },
   },
   required: ["in_scope", "near_me", "cheaper"],
@@ -114,6 +128,9 @@ export function buildExtractionPrompt(params: { today: string; currentHour: numb
     "- Giá: '80 nghìn', '80k', '80 ngàn' = 80000 đồng mỗi giờ. 'dưới X' đặt max_price = X; 'trên X' đặt min_price = X; 'tầm X' đặt max_price = X.",
     "- 'gần tôi', 'gần đây', 'gần chỗ tôi' đặt near_me = true. 'gần Hải Châu' là khu vực: đặt ward_name, không đặt near_me.",
     "- 'cuối tuần' không nói rõ ngày thì chọn thứ bảy gần nhất.",
+    "- Số sân: 'còn trống 8 sân', 'cần 4 sân', 'thuê 6 sân để tổ chức giải' đặt min_courts = con số đó. Chỉ đặt khi có con số; 'sân nào còn trống' (không có số) thì để null.",
+    "- Giờ liên tục: người dùng nêu rõ giờ bắt đầu và kết thúc ('từ 7h đến 9h', '17h-19h') thì consecutive_hours = số giờ của khung đó (ở đây là 2);",
+    "  nêu thời lượng ('chơi 2 tiếng tối mai', 'đánh liên tục 3 giờ') thì consecutive_hours = thời lượng và time_from/time_to là cả buổi. Chỉ nói buổi chung chung hoặc một giờ ('lúc 7 giờ tối') thì để null.",
     "- Chỉ điền điều kiện người dùng thật sự nêu. Không tự suy đoán ngày, giờ, giá.",
     "",
     "Hội thoại nhiều lượt: bộ lọc của lượt trước được cho bên dưới. Hãy trả về bộ lọc ĐẦY ĐỦ sau khi áp dụng câu hỏi mới:",
@@ -140,6 +157,8 @@ function toModelFilter(f: AiFilter) {
     max_price: f.max_price,
     near_me: f.near_me,
     radius_km: f.radius_km,
+    min_courts: f.min_courts,
+    consecutive_hours: f.consecutive_hours,
   };
 }
 
@@ -239,6 +258,24 @@ export function sanitizeFilter(
   const radius = typeof raw.radius_km === "number" ? raw.radius_km : null;
   if (radius !== null && filter.near_me) filter.radius_km = Math.min(Math.max(radius, 1), 50);
 
+  const courts = int(raw.min_courts);
+  if (courts !== null) {
+    // 1 sân là điều kiện mặc định của mọi lượt tìm nên không cần lưu; tối đa 50 (giới hạn số ô mỗi lượt đặt)
+    if (courts >= 2 && courts <= 50) filter.min_courts = courts;
+    else if (courts !== 1) dropped.push("courts");
+  }
+
+  const run = int(raw.consecutive_hours);
+  if (run !== null && run >= 2) {
+    if (run > 6) dropped.push("duration");
+    else if (filter.time_from && filter.time_to) {
+      const span = Number(filter.time_to.slice(0, 2)) - Number(filter.time_from.slice(0, 2));
+      // Khung giờ hôm nay có thể đã bị cắt bớt giờ đã qua: khung còn lại ngắn hơn thời lượng thì không xếp được
+      if (run <= span) filter.consecutive_hours = run;
+      else dropped.push("duration");
+    } else filter.consecutive_hours = run;
+  }
+
   return { filter, dropped: [...new Set(dropped)], cheaper: raw.cheaper === true, inScope };
 }
 
@@ -248,13 +285,16 @@ export type Decision = { kind: "reject" } | { kind: "ask"; missing: string[] } |
 export function decide(filter: AiFilter, dropped: string[], inScope: boolean): Decision {
   if (!inScope) return { kind: "reject" };
   const hasPlace = filter.ward_id !== null || filter.keyword !== null || filter.near_me;
-  const hasAny = hasPlace || filter.date !== null || filter.time_from !== null || filter.min_price !== null || filter.max_price !== null;
+  const hasAny =
+    hasPlace || filter.date !== null || filter.time_from !== null || filter.min_price !== null || filter.max_price !== null || filter.min_courts !== null;
   const missing: string[] = [];
   // Giá trị mô hình đưa ra nhưng không hợp lệ: hỏi lại đúng phần đó
   if (dropped.includes("date")) missing.push("date");
   if (dropped.includes("ward")) missing.push("ward");
   if (dropped.includes("location")) missing.push("location");
   if (dropped.includes("time")) missing.push("time");
+  if (dropped.includes("courts")) missing.push("courts");
+  if (dropped.includes("duration")) missing.push("duration");
   if (!hasAny) {
     if (!missing.includes("date")) missing.push("date");
     if (!missing.includes("ward") && !missing.includes("location")) missing.push("ward");
@@ -262,6 +302,11 @@ export function decide(filter: AiFilter, dropped: string[], inScope: boolean): D
   }
   // Có khung giờ mà chưa có ngày: không biết kiểm tra sân trống ngày nào
   if (filter.time_from !== null && filter.date === null && !missing.includes("date")) missing.push("date");
+  // Cần giờ liên tục thì phải biết ngày và khung giờ để kiểm tra từng sân con
+  if (filter.consecutive_hours !== null) {
+    if (filter.date === null && !missing.includes("date")) missing.push("date");
+    if (filter.time_from === null && !missing.includes("time")) missing.push("time");
+  }
   return missing.length > 0 ? { kind: "ask", missing } : { kind: "search" };
 }
 
@@ -270,6 +315,8 @@ const ASK_TEXT: Record<string, string> = {
   ward: "bạn muốn tìm ở khu vực nào (ví dụ: phường Hải Châu, Sơn Trà)",
   location: "bạn hãy bấm “Dùng vị trí của tôi” để mình tìm sân gần bạn, hoặc cho mình biết phường/xã",
   time: "bạn muốn chơi khoảng mấy giờ",
+  courts: "bạn cần bao nhiêu sân cùng lúc (từ 2 đến 50 sân)",
+  duration: "bạn cần chơi liên tục mấy giờ (tối đa 6 giờ, không dài hơn khung giờ bạn chọn)",
 };
 
 /** Câu hỏi lại của trợ lý (văn bản cố định, không do mô hình tạo). */
@@ -279,6 +326,8 @@ export function askText(missing: string[], dropped: string[]): string {
   if (dropped.includes("date")) note.push("ngày bạn nêu đã qua hoặc quá xa");
   if (dropped.includes("ward")) note.push("mình chưa nhận ra khu vực bạn nêu trong danh mục phường, xã của Đà Nẵng");
   if (dropped.includes("time")) note.push("khung giờ bạn nêu không còn hoặc không hợp lệ");
+  if (dropped.includes("courts")) note.push("số sân bạn nêu không hợp lệ");
+  if (dropped.includes("duration")) note.push("thời lượng bạn nêu dài hơn khung giờ còn lại hoặc quá 6 giờ");
   const prefix = note.length ? `Mình chưa dùng được một phần thông tin: ${note.join("; ")}. ` : "";
   return `${prefix}Để tìm sân phù hợp, cho mình biết thêm: ${parts.join("; ")}.`;
 }
@@ -302,6 +351,79 @@ export function hoursOf(filter: AiFilter): string[] {
   return Array.from({ length: Math.min(to - from, 6) }, (_, i) => hh(from + i));
 }
 
+/**
+ * Gộp kết quả tìm theo từng giờ thành danh sách cơ sở kèm các giờ còn đủ sân trống.
+ * Một giờ chỉ được tính khi số sân con trống ở giờ đó đạt min_courts (mặc định 1); cơ sở có tổng số sân con
+ * ít hơn min_courts bị bỏ. free_courts là số sân trống ít nhất trong các giờ được giữ, để câu trả lời không phóng đại.
+ * Giữ thứ tự xuất hiện đầu tiên (khoảng cách hoặc tên).
+ */
+export function mergeFreeHours<T extends { id: number; court_count: number; free_courts?: number | null }>(
+  hours: string[],
+  perHour: (T[] | null)[],
+  minCourts: number | null,
+): (T & { free_hours: string[]; free_courts: number | null })[] {
+  const need = minCourts ?? 1;
+  const merged = new Map<number, T & { free_hours: string[]; free_courts: number | null }>();
+  perHour.forEach((venues, i) => {
+    for (const venue of venues ?? []) {
+      const free = venue.free_courts ?? venue.court_count;
+      if (venue.court_count < need || free < need) continue;
+      const current = merged.get(venue.id) ?? { ...venue, free_hours: [], free_courts: free };
+      current.free_hours.push(hours[i]);
+      current.free_courts = Math.min(current.free_courts ?? free, free);
+      merged.set(venue.id, current);
+    }
+  });
+  return [...merged.values()];
+}
+
+/** Trạng thái các khung giờ của một sân con (lấy từ getAvailability). */
+export interface CourtSlots {
+  name: string;
+  slots: { start_time: string; state: string }[];
+}
+
+/** Khung giờ liên tục tìm được: các sân con trống suốt từ start tới end. */
+export interface RunWindow {
+  start: string;
+  end: string;
+  courts: string[];
+}
+
+/**
+ * Tìm các khung `length` giờ liên tục trong `hours` (các giờ bắt đầu người chơi hỏi, liền nhau) mà có ít nhất `need` sân con
+ * trống SUỐT cả khung. Bảo đảm người chơi giữ được cùng các sân con, không phải đổi sân giữa chừng.
+ */
+export function findRunWindows(courts: CourtSlots[], hours: string[], need: number, length: number): RunWindow[] {
+  const windows: RunWindow[] = [];
+  for (let i = 0; i + length <= hours.length; i += 1) {
+    const span = hours.slice(i, i + length);
+    const free = courts.filter((court) => span.every((h) => court.slots.find((s) => s.start_time === h)?.state === "available"));
+    if (free.length >= need) windows.push({ start: span[0], end: hh(Number(span[length - 1].slice(0, 2)) + 1), courts: free.map((c) => c.name) });
+  }
+  return windows;
+}
+
+/** Điều kiện cần (theo số đếm từng giờ): có `length` giờ liền nhau đều nằm trong danh sách giờ còn đủ sân. */
+export function hasConsecutive(freeHours: string[], hours: string[], length: number): boolean {
+  let streak = 0;
+  for (const h of hours) {
+    streak = freeHours.includes(h) ? streak + 1 : 0;
+    if (streak >= length) return true;
+  }
+  return false;
+}
+
+/** Cảnh báo khi số ô cần đặt (số sân × số giờ) vượt giới hạn một lượt đặt của cơ sở (max_slots_per_booking). */
+export function slotLimitNote(venues: { name: string; max_slots: number | null }[], courts: number, hours: number): string {
+  const cells = courts * hours;
+  const over = venues.filter((v) => v.max_slots !== null && cells > v.max_slots);
+  if (over.length === 0) return "";
+  const parts = over.map((v) => `${v.name} cho đặt tối đa ${v.max_slots} ô mỗi lượt`);
+  const turns = Math.ceil(cells / Math.min(...over.map((v) => v.max_slots as number)));
+  return ` Lưu ý: ${courts} sân × ${hours} giờ = ${cells} ô; ${parts.join(", ")} nên bạn cần chia thành ${turns} lượt đặt.`;
+}
+
 /** Mô tả bộ lọc bằng lời, dùng trong câu trả lời khi không có kết quả. */
 export function describeFilter(f: AiFilter): string {
   const parts: string[] = [];
@@ -310,6 +432,8 @@ export function describeFilter(f: AiFilter): string {
   if (f.near_me) parts.push(`gần bạn${f.radius_km ? ` trong ${f.radius_km} km` : ""}`);
   if (f.date) parts.push(`ngày ${f.date.slice(8)}/${f.date.slice(5, 7)}`);
   if (f.time_from && f.time_to) parts.push(`từ ${f.time_from} đến ${f.time_to}`);
+  if (f.min_courts) parts.push(`còn ít nhất ${f.min_courts} sân trống cùng lúc`);
+  if (f.consecutive_hours) parts.push(`liên tục ${f.consecutive_hours} giờ trên cùng sân`);
   if (f.min_price) parts.push(`giá từ ${f.min_price.toLocaleString("vi-VN")} đ`);
   if (f.max_price) parts.push(`giá đến ${f.max_price.toLocaleString("vi-VN")} đ`);
   return parts.join(", ");
@@ -323,6 +447,8 @@ export interface ReplyVenue {
   court_count: number;
   distance_km: number | null;
   free_hours: string[];
+  /** Số sân con trống ít nhất trong các giờ còn trống (chỉ có khi lọc theo ngày, giờ) */
+  free_courts: number | null;
 }
 
 /** Lời nhắc cho bước 2 (diễn đạt kết quả). Mô hình chỉ được dùng dữ liệu trong danh sách. */
@@ -332,6 +458,8 @@ export function buildReplyPrompt(filter: AiFilter, venues: ReplyVenue[]): { syst
       "Bạn là trợ lý tìm sân cầu lông ở Đà Nẵng. Viết câu trả lời ngắn gọn bằng tiếng Việt, thân thiện, xưng 'mình', gọi người dùng là 'bạn'.",
       "CHỈ được dùng thông tin trong DỮ LIỆU SÂN bên dưới. Không được thêm tên sân, địa chỉ, giá, khung giờ, tiện ích, đánh giá nào không có trong dữ liệu.",
       "Nêu số sân tìm được, rồi giới thiệu từng sân trong một câu: tên, khu vực, giá từ bao nhiêu mỗi giờ, giờ còn trống (nếu có), khoảng cách (nếu có).",
+      "court_count là tổng số sân con của cơ sở; free_courts là số sân con còn trống trong các giờ đã nêu. Nếu điều kiện tìm có số sân cần cùng lúc thì nói rõ cơ sở còn trống bao nhiêu sân (free_courts).",
+      "free_hours có thể là khung liên tục dạng '07:00–09:00': nghĩa là có free_courts sân con trống suốt cả khung đó.",
       "Kết thúc bằng một câu gợi ý người dùng có thể hỏi tiếp để điều chỉnh (đổi ngày, rẻ hơn, khu vực khác). Tối đa 120 từ. Không dùng markdown.",
     ].join("\n"),
     user: `ĐIỀU KIỆN TÌM: ${describeFilter(filter) || "không có điều kiện cụ thể"}\nDỮ LIỆU SÂN (JSON): ${JSON.stringify(venues)}`,
@@ -344,6 +472,7 @@ export function templateReply(venues: ReplyVenue[]): string {
     const bits = [`${v.name} (${v.ward})`];
     if (v.min_price !== null) bits.push(`giá từ ${v.min_price.toLocaleString("vi-VN")} đ/giờ`);
     if (v.free_hours.length) bits.push(`còn trống lúc ${v.free_hours.join(", ")}`);
+    if (v.free_courts !== null) bits.push(`còn ${v.free_courts}/${v.court_count} sân trống`);
     if (v.distance_km !== null) bits.push(`cách bạn ${v.distance_km.toLocaleString("vi-VN")} km`);
     return bits.join(", ");
   });
@@ -358,6 +487,8 @@ export function noResultReply(filter: AiFilter): string {
   if (filter.ward_id) hints.push("mở rộng sang phường, xã lân cận");
   if (filter.near_me) hints.push("tăng bán kính tìm kiếm");
   if (filter.keyword) hints.push("bỏ từ khóa tên sân");
+  if (filter.min_courts) hints.push("giảm số sân cần cùng lúc hoặc chia ra nhiều cơ sở");
+  if (filter.consecutive_hours) hints.push("rút ngắn thời lượng hoặc mở rộng khung giờ");
   const condition = describeFilter(filter);
   return `Hiện không có sân nào phù hợp${condition ? ` với điều kiện ${condition}` : ""}. Bạn thử ${hints.length ? hints.join(", hoặc ") : "nới bớt điều kiện"} nhé.`;
 }

@@ -5,10 +5,14 @@ import {
   cheaperMaxPrice,
   decide,
   EXTRACTION_SCHEMA,
+  findRunWindows,
+  hasConsecutive,
   hoursOf,
+  mergeFreeHours,
   noResultReply,
   REJECT_TEXT,
   sanitizeFilter,
+  slotLimitNote,
   templateReply,
   type AiFilter,
   type RawExtraction,
@@ -17,17 +21,21 @@ import {
 import { callGemini, parseJsonObject } from "@/lib/ai/gemini";
 import { dbFail } from "@/lib/db-errors";
 import { currentHourInVietnam, todayInVietnam } from "@/lib/format";
-import { listVenues, listWards } from "@/lib/services/venues";
+import { getAvailability, getVenueDetail, listVenues, listWards } from "@/lib/services/venues";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/auth";
 import { fail, ok, type Result, type VenueCard } from "@/lib/types";
 
 export const AI_DAILY_LIMIT = Math.max(1, Number(process.env.AI_DAILY_LIMIT) || 20);
 const MAX_VENUES = 5;
+/** Số cơ sở tối đa được kiểm tra chi tiết từng sân con khi cần giờ liên tục (giới hạn số truy vấn mỗi câu hỏi) */
+const VERIFY_LIMIT = 12;
 
 export interface AssistantVenue extends VenueCard {
-  /** Các giờ còn sân trống trong khung giờ người chơi hỏi */
+  /** Các giờ còn đủ sân trống (ít nhất min_courts sân, mặc định 1), hoặc các khung liên tục dạng "07:00–09:00" */
   free_hours: string[];
+  /** Giới hạn số ô mỗi lượt đặt của cơ sở (chỉ có khi đã kiểm tra chi tiết) */
+  max_slots?: number | null;
 }
 
 export interface AssistantReply {
@@ -43,8 +51,13 @@ export interface AssistantReply {
 
 const FALLBACK_TEXT = "Trợ lý AI đang tạm thời không phản hồi được. Bạn dùng bộ lọc tìm sân thông thường ở trang chủ giúp mình nhé.";
 
-/** Tìm sân theo bộ lọc của trợ lý. Có ngày và khung giờ thì kiểm tra từng giờ và gộp các giờ còn trống. */
+/**
+ * Tìm sân theo bộ lọc của trợ lý. Có ngày và khung giờ thì kiểm tra từng giờ và gộp các giờ còn trống.
+ * Có số sân cần cùng lúc (min_courts) thì chỉ tính một giờ là còn trống khi số sân con trống ở giờ đó đủ min_courts,
+ * và bỏ cơ sở có tổng số sân con ít hơn min_courts.
+ */
 async function search(filter: AiFilter, point: { lat: number; lng: number } | null): Promise<Result<AssistantVenue[]>> {
+  const need = filter.min_courts ?? 1;
   const base = {
     q: filter.keyword ?? undefined,
     wardId: filter.ward_id ?? undefined,
@@ -55,21 +68,32 @@ async function search(filter: AiFilter, point: { lat: number; lng: number } | nu
   const hours = filter.date ? hoursOf(filter) : [];
   if (hours.length === 0) {
     const result = await listVenues(base);
-    return result.ok ? ok(result.data.map((v) => ({ ...v, free_hours: [] }))) : result;
+    return result.ok ? ok(result.data.filter((v) => v.court_count >= need).map((v) => ({ ...v, free_hours: [] }))) : result;
   }
-  const merged = new Map<number, AssistantVenue>();
   const results = await Promise.all(hours.map((h) => listVenues({ ...base, date: filter.date as string, startTime: h })));
-  results.forEach((result, i) => {
-    if (!result.ok) return;
-    for (const venue of result.data) {
-      const current = merged.get(venue.id) ?? { ...venue, free_hours: [] };
-      current.free_hours.push(hours[i]);
-      merged.set(venue.id, current);
-    }
-  });
   if (results.every((r) => !r.ok)) return fail(500, "Không tải được danh sách sân");
-  // Giữ thứ tự của lượt tìm đầu tiên có kết quả (khoảng cách hoặc tên)
-  return ok([...merged.values()]);
+  const merged: AssistantVenue[] = mergeFreeHours(hours, results.map((r) => (r.ok ? r.data : null)), filter.min_courts);
+  const length = filter.consecutive_hours;
+  if (!length) return ok(merged);
+
+  // Cần giờ liên tục: lọc nhanh theo số đếm từng giờ, rồi kiểm tra từng sân con để chắc có đủ `need` sân trống SUỐT khung
+  // (số đếm từng giờ chưa đủ: 8 sân trống lúc 7 giờ và 8 sân trống lúc 8 giờ có thể không phải cùng 8 sân).
+  const candidates = merged.filter((v) => hasConsecutive(v.free_hours, hours, length)).slice(0, VERIFY_LIMIT);
+  const checked = await Promise.all(
+    candidates.map(async (venue): Promise<AssistantVenue | null> => {
+      const [slots, detail] = await Promise.all([getAvailability(venue.id, filter.date as string), getVenueDetail(venue.id)]);
+      if (!slots.ok) return null;
+      const windows = findRunWindows(slots.data.courts, hours, need, length);
+      if (windows.length === 0) return null;
+      return {
+        ...venue,
+        free_hours: windows.map((w) => `${w.start}–${w.end}`),
+        free_courts: Math.max(...windows.map((w) => w.courts.length)),
+        max_slots: detail.ok ? detail.data.venue.max_slots_per_booking : null,
+      };
+    }),
+  );
+  return ok(checked.filter((v): v is AssistantVenue => v !== null));
 }
 
 const toReplyVenue = (v: AssistantVenue): ReplyVenue => ({
@@ -80,6 +104,7 @@ const toReplyVenue = (v: AssistantVenue): ReplyVenue => ({
   court_count: v.court_count,
   distance_km: v.distance_km ?? null,
   free_hours: v.free_hours,
+  free_courts: v.free_hours.length ? (v.free_courts ?? null) : null,
 });
 
 /**
@@ -178,6 +203,14 @@ export async function chat(input: unknown): Promise<Result<AssistantReply>> {
     callGemini({ system: prompt.system, user: prompt.user, timeoutMs: 12_000, maxOutputTokens: 400 }),
   ]);
   const more = total > venues.length ? ` (Hiển thị ${venues.length} trong ${total} sân phù hợp.)` : "";
+  // Số ô cần đặt vượt giới hạn một lượt của cơ sở: nhắc người chơi chia lượt (máy chủ tự tính, không do mô hình viết)
+  if (filter.consecutive_hours && filter.min_courts) {
+    note += slotLimitNote(
+      venues.map((v) => ({ name: v.name, max_slots: v.max_slots ?? null })),
+      filter.min_courts,
+      filter.consecutive_hours,
+    );
+  }
   return ok({ reply: `${phrased.ok ? phrased.text : templateReply(replyVenues)}${note}${more}`, filter, venues, remaining, fallback: false });
 }
 

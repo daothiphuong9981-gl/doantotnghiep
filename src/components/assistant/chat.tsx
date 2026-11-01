@@ -25,7 +25,7 @@ const shortPrice = (price: number | null) => (price === null ? "Sân" : `${Math.
 function venueHref(venue: AssistantVenue, filter: AiFilter | null | undefined) {
   const params = new URLSearchParams();
   if (filter?.date) params.set("date", filter.date);
-  if (filter?.date && venue.free_hours[0]) params.set("time", venue.free_hours[0]);
+  if (filter?.date && venue.free_hours[0]) params.set("time", venue.free_hours[0].slice(0, 5));
   const query = params.toString();
   return `/venues/${venue.id}${query ? `?${query}` : ""}`;
 }
@@ -40,6 +40,8 @@ function filterChips(f: AiFilter): { key: string; label: string; clear: Partial<
   if (f.time_from && f.time_to) chips.push({ key: "time", label: `${f.time_from} – ${f.time_to}`, clear: { time_from: null, time_to: null } });
   if (f.min_price) chips.push({ key: "min", label: `Từ ${formatVnd(f.min_price)}`, clear: { min_price: null } });
   if (f.max_price) chips.push({ key: "max", label: `Đến ${formatVnd(f.max_price)}`, clear: { max_price: null } });
+  if (f.min_courts) chips.push({ key: "courts", label: `Cần ${f.min_courts} sân cùng lúc`, clear: { min_courts: null } });
+  if (f.consecutive_hours) chips.push({ key: "run", label: `Liên tục ${f.consecutive_hours} giờ`, clear: { consecutive_hours: null } });
   return chips;
 }
 
@@ -132,12 +134,16 @@ export function AssistantChat({ dailyLimit }: { dailyLimit: number }) {
       const res = await fetch(`/api/venues?${params}`);
       const body = await res.json();
       if (!res.ok) throw new Error(body.message);
+      const need = filter.min_courts ?? 1;
+      const byTime = Boolean(filter.date && filter.time_from);
       const venues: AssistantVenue[] = body.data.venues
+        .filter((v: AssistantVenue) => v.court_count >= need && (!byTime || (v.free_courts ?? 0) >= need))
         .slice(0, 5)
-        .map((v: AssistantVenue) => ({ ...v, free_hours: filter.date && filter.time_from && v.free_courts ? [filter.time_from] : [] }));
+        .map((v: AssistantVenue) => ({ ...v, free_hours: byTime && v.free_courts ? [filter.time_from as string] : [] }));
       setShown({ filter, venues });
       setActiveId(venues[0]?.id ?? null);
-      setNotice(null);
+      // Tìm nhanh bằng bộ lọc thường chỉ xét giờ đầu tiên, chưa kiểm tra được giờ liên tục trên cùng sân con
+      setNotice(filter.consecutive_hours ? "Kết quả này mới kiểm tra giờ đầu tiên. Hãy hỏi lại trợ lý để kiểm tra đủ giờ liên tục trên cùng sân." : null);
     } catch {
       setNotice("Không tìm lại được với bộ lọc đã sửa. Vui lòng thử lại.");
     }

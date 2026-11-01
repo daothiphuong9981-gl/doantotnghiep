@@ -18,5 +18,9 @@
   { "q": "sân ở quận 1 Sài Gòn tối nay", "expect": {}, "decision": "ask" },
   { "q": "rẻ hơn nữa", "previous": { "ward": "Phường Hải Châu", "date": "sat", "time_from": "18:00", "time_to": "22:00", "max_price": 80000 }, "expect": { "ward": "Phường Hải Châu", "date": "sat", "time_from": "18:00", "time_to": "22:00", "cheaper": true } },
   { "q": "đổi sang chủ nhật", "previous": { "ward": "Phường Hải Châu", "date": "sat", "time_from": "18:00", "time_to": "22:00", "max_price": 80000 }, "expect": { "ward": "Phường Hải Châu", "date": "sun", "time_from": "18:00", "time_to": "22:00", "max_price": 80000 } },
+  { "q": "sáng mai sân nào còn trống 8 sân để tổ chức giải không?", "expect": { "date": "tomorrow", "time_from": "05:00", "time_to": "11:00", "min_courts": 8 } },
+  { "q": "tối thứ bảy ở Hải Châu cần thuê 4 sân", "expect": { "ward": "Phường Hải Châu", "date": "sat", "time_from": "18:00", "time_to": "22:00", "min_courts": 4 } },
+  { "q": "ngày mai cần 8 sân từ 7h đến 9h sáng để tổ chức giải", "expect": { "date": "tomorrow", "time_from": "07:00", "time_to": "09:00", "min_courts": 8, "consecutive_hours": 2 } },
+  { "q": "tối mai ở Sơn Trà muốn chơi liên tục 2 tiếng", "expect": { "ward": "Phường Sơn Trà", "date": "tomorrow", "time_from": "18:00", "time_to": "22:00", "consecutive_hours": 2 } },
   { "q": "thế còn ở Sơn Trà thì sao", "previous": { "ward": "Phường Hải Châu", "date": "sat", "time_from": "18:00", "time_to": "22:00", "max_price": 80000 }, "expect": { "ward": "Phường Sơn Trà", "date": "sat", "time_from": "18:00", "time_to": "22:00", "max_price": 80000 } }
 ]
