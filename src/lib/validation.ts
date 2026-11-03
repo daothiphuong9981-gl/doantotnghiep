@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { bankByBin } from "./banks";
 import { BOOKING_RULES } from "./constants";
-import type { PriceSlot } from "./types";
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 /** Số lấy từ form: chuỗi rỗng coi như chưa nhập (không tự đổi thành 0). */
@@ -111,21 +110,6 @@ export const bookingSchema = z.object({
     .max(BOOKING_RULES.max_slots_per_booking.max, `Mỗi lượt đặt tối đa ${BOOKING_RULES.max_slots_per_booking.max} khung giờ`),
 });
 
-/** Tìm cặp khung giá cùng loại ngày bị chồng giờ lên nhau. Trả về thông báo lỗi hoặc null. */
-export function findPriceOverlap(prices: PriceSlot[]): string | null {
-  const label = { weekday: "ngày thường", weekend: "cuối tuần" } as const;
-  for (let i = 0; i < prices.length; i += 1) {
-    for (let j = i + 1; j < prices.length; j += 1) {
-      const a = prices[i];
-      const b = prices[j];
-      if (a.day_type === b.day_type && a.start_time < b.end_time && b.start_time < a.end_time) {
-        return `Khung giá ${a.start_time}–${a.end_time} và ${b.start_time}–${b.end_time} (${label[a.day_type]}) bị trùng giờ`;
-      }
-    }
-  }
-  return null;
-}
-
 /** Lấy thông báo lỗi đầu tiên của zod cho từng trường. */
 export function fieldErrors(error: z.ZodError): Record<string, string> {
   const out: Record<string, string> = {};
@@ -136,6 +120,5 @@ export function fieldErrors(error: z.ZodError): Record<string, string> {
   return out;
 }
 
-export const MAX_IMAGES = 5;
-export const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
-export const IMAGE_TYPES = ["image/jpeg", "image/png"];
+// Giữ đường import cũ cho mã phía máy chủ; component phía client nên import thẳng từ "@/lib/limits" (không kéo zod).
+export { findPriceOverlap, IMAGE_TYPES, MAX_IMAGE_BYTES, MAX_IMAGES } from "./limits";

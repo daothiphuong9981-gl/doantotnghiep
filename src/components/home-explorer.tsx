@@ -85,6 +85,11 @@ export function HomeExplorer({
   /** Tăng lên khi có kết quả mới để bản đồ canh lại theo các sân. */
   const [fitKey, setFitKey] = useState(0);
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
+  /**
+   * Thẻ sân người dùng vừa rê chuột/chạm vào: chỉ thẻ này được prefetch. Các thẻ khác không prefetch khi lọt vào màn hình,
+   * tránh hàng chục yêu cầu tới máy chủ khi cuộn danh sách (mẫu HoverPrefetchLink trong tài liệu Next.js).
+   */
+  const [intentId, setIntentId] = useState<number | null>(null);
   /** Chỉ nhận kết quả của lần tìm mới nhất (gõ nhanh có thể sinh nhiều yêu cầu chồng nhau). */
   const requestId = useRef(0);
   const pending = useRef<SearchFilter | null>(null);
@@ -242,7 +247,7 @@ export function HomeExplorer({
           ) : null}
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <Link href={venueHref(v.id)} className={buttonClass("primary", "h-9 px-2 text-xs text-white!")}>
+          <Link href={venueHref(v.id)} prefetch={false} className={buttonClass("primary", "h-9 px-2 text-xs text-white!")}>
             Xem & đặt sân
           </Link>
           <a href={directionsUrl(v.latitude, v.longitude)} target="_blank" rel="noopener noreferrer" className={buttonClass("outline", "h-9 px-2 text-xs text-slate-900!")}>
@@ -451,8 +456,17 @@ export function HomeExplorer({
               <li key={v.id} id={`venue-${v.id}`} className="scroll-mt-16">
                 <Link
                   href={venueHref(v.id)}
-                  onMouseEnter={() => setActiveId(v.id)}
-                  onFocus={() => setActiveId(v.id)}
+                  // false: không prefetch khi chỉ cuộn qua; null: prefetch mặc định khi người dùng có ý định bấm
+                  prefetch={intentId === v.id ? null : false}
+                  onMouseEnter={() => {
+                    setActiveId(v.id);
+                    setIntentId(v.id);
+                  }}
+                  onTouchStart={() => setIntentId(v.id)}
+                  onFocus={() => {
+                    setActiveId(v.id);
+                    setIntentId(v.id);
+                  }}
                   className={`flex gap-3 rounded-xl border bg-white p-3 transition hover:border-amber-400 ${
                     activeId === v.id ? "border-amber-400 ring-2 ring-amber-200" : "border-slate-200"
                   }`}

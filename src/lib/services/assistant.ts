@@ -18,13 +18,15 @@ import {
   type RawExtraction,
   type ReplyVenue,
 } from "@/lib/ai/filter";
+import { after } from "next/server";
 import { callGemini, parseJsonObject } from "@/lib/ai/gemini";
 import { dbFail } from "@/lib/db-errors";
 import { currentHourInVietnam, todayInVietnam } from "@/lib/format";
-import { getAvailability, getVenueDetail, listVenues, listWards } from "@/lib/services/venues";
+import { ratingSummaries } from "@/lib/services/reviews";
+import { getAvailabilityDetail, listVenues, listWards } from "@/lib/services/venues";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/auth";
-import { fail, ok, type Result, type VenueCard } from "@/lib/types";
+import { fail, ok, type RatingSummary, type Result, type VenueCard } from "@/lib/types";
 
 export const AI_DAILY_LIMIT = Math.max(1, Number(process.env.AI_DAILY_LIMIT) || 20);
 const MAX_VENUES = 5;
@@ -56,7 +58,11 @@ const FALLBACK_TEXT = "Trợ lý AI đang tạm thời không phản hồi đư�
  * Có số sân cần cùng lúc (min_courts) thì chỉ tính một giờ là còn trống khi số sân con trống ở giờ đó đủ min_courts,
  * và bỏ cơ sở có tổng số sân con ít hơn min_courts.
  */
-async function search(filter: AiFilter, point: { lat: number; lng: number } | null): Promise<Result<AssistantVenue[]>> {
+async function search(
+  filter: AiFilter,
+  point: { lat: number; lng: number } | null,
+  ratings: Promise<Map<number, RatingSummary>>,
+): Promise<Result<AssistantVenue[]>> {
   const need = filter.min_courts ?? 1;
   const base = {
     q: filter.keyword ?? undefined,
@@ -67,10 +73,11 @@ async function search(filter: AiFilter, point: { lat: number; lng: number } | nu
   };
   const hours = filter.date ? hoursOf(filter) : [];
   if (hours.length === 0) {
-    const result = await listVenues(base);
+    const result = await listVenues(base, ratings);
     return result.ok ? ok(result.data.filter((v) => v.court_count >= need).map((v) => ({ ...v, free_hours: [] }))) : result;
   }
-  const results = await Promise.all(hours.map((h) => listVenues({ ...base, date: filter.date as string, startTime: h })));
+  // Tới 6 giờ được hỏi song song; điểm đánh giá dùng chung một lần đọc (ratings) thay vì mỗi giờ một lần
+  const results = await Promise.all(hours.map((h) => listVenues({ ...base, date: filter.date as string, startTime: h }, ratings)));
   if (results.every((r) => !r.ok)) return fail(500, "Không tải được danh sách sân");
   const merged: AssistantVenue[] = mergeFreeHours(hours, results.map((r) => (r.ok ? r.data : null)), filter.min_courts);
   const length = filter.consecutive_hours;
@@ -81,15 +88,16 @@ async function search(filter: AiFilter, point: { lat: number; lng: number } | nu
   const candidates = merged.filter((v) => hasConsecutive(v.free_hours, hours, length)).slice(0, VERIFY_LIMIT);
   const checked = await Promise.all(
     candidates.map(async (venue): Promise<AssistantVenue | null> => {
-      const [slots, detail] = await Promise.all([getAvailability(venue.id, filter.date as string), getVenueDetail(venue.id)]);
+      // Một lần đọc chi tiết sân (đã lưu đệm) + giờ trống; giới hạn số ô mỗi lượt lấy luôn từ chi tiết đó
+      const slots = await getAvailabilityDetail(venue.id, filter.date as string);
       if (!slots.ok) return null;
-      const windows = findRunWindows(slots.data.courts, hours, need, length);
+      const windows = findRunWindows(slots.data.availability.courts, hours, need, length);
       if (windows.length === 0) return null;
       return {
         ...venue,
         free_hours: windows.map((w) => `${w.start}–${w.end}`),
         free_courts: Math.max(...windows.map((w) => w.courts.length)),
-        max_slots: detail.ok ? detail.data.venue.max_slots_per_booking : null,
+        max_slots: slots.data.detail.venue.max_slots_per_booking,
       };
     }),
   );
@@ -143,8 +151,16 @@ export async function chat(input: unknown): Promise<Result<AssistantReply>> {
   const remaining = Math.max(0, AI_DAILY_LIMIT - turn.used);
   const finish = (filter: AiFilter | null, count: number | null, status: "ok" | "fallback" | "rejected" | "error") =>
     supabase.rpc("ai_finish", { p_id: turn.id, p_filter: filter, p_result_count: count, p_status: status });
-  const fallback = async (): Promise<Result<AssistantReply>> => {
-    await finish(null, null, "fallback");
+  // Ghi nhật ký sau khi đã trả lời (after): người dùng không phải chờ thêm một lượt Supabase.
+  // Bộ lọc được sao chép vì `filter` có thể bị sửa sau đó (nhánh "rẻ hơn").
+  const finishLater = (filter: AiFilter | null, count: number | null, status: "ok" | "fallback" | "rejected" | "error") => {
+    const snapshot = filter ? { ...filter } : null;
+    after(async () => {
+      await finish(snapshot, count, status);
+    });
+  };
+  const fallback = (): Result<AssistantReply> => {
+    finishLater(null, null, "fallback");
     return ok({ reply: FALLBACK_TEXT, filter: null, venues: [], remaining, fallback: true });
   };
 
@@ -165,17 +181,19 @@ export async function chat(input: unknown): Promise<Result<AssistantReply>> {
   const { filter, dropped, cheaper, inScope } = sanitizeFilter(raw, { today, currentHour, wards: wards.data, hasLocation: point !== null });
   const decision = decide(filter, dropped, inScope);
   if (decision.kind === "reject") {
-    await finish(null, null, "rejected");
+    finishLater(null, null, "rejected");
     return ok({ reply: REJECT_TEXT, filter: null, venues: [], remaining, fallback: false });
   }
   if (decision.kind === "ask") {
-    // Giữ phần bộ lọc đã hiểu để lượt sau người chơi chỉ cần bổ sung
-    await finish(filter, null, "ok");
+    // Giữ phần bộ lọc đã hiểu để lượt sau người chơi chỉ cần bổ sung (ai_begin của lượt sau đọc last_filter; lượt sau
+    // chỉ tới sau khi người dùng đọc câu hỏi lại nên after() đã ghi xong)
+    finishLater(filter, null, "ok");
     return ok({ reply: askText(decision.missing, dropped), filter, venues: [], remaining, fallback: false });
   }
 
-  // Bước 2: truy vấn dữ liệu thật
-  let found = await search(filter, point);
+  // Bước 2: truy vấn dữ liệu thật. Điểm đánh giá đọc một lần cho cả câu hỏi (kể cả lần tìm lại "rẻ hơn").
+  const ratings = ratingSummaries();
+  let found = await search(filter, point, ratings);
   if (!found.ok) return fallback();
   let note = "";
   if (cheaper) {
@@ -184,14 +202,14 @@ export async function chat(input: unknown): Promise<Result<AssistantReply>> {
     else {
       filter.max_price = cheaperMax;
       if (filter.min_price !== null && filter.min_price > cheaperMax) filter.min_price = null;
-      found = await search(filter, point);
+      found = await search(filter, point, ratings);
       if (!found.ok) return fallback();
     }
   }
   const total = found.data.length;
   const venues = found.data.slice(0, MAX_VENUES);
   if (total === 0) {
-    await finish(filter, total, "ok");
+    finishLater(filter, total, "ok");
     return ok({ reply: noResultReply(filter), filter, venues: [], remaining, fallback: false });
   }
 

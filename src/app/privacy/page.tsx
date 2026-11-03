@@ -1,4 +1,6 @@
 export const metadata = { title: "Thông báo xử lý dữ liệu cá nhân - Cầu Lông Đà Nẵng" };
+// Trang tĩnh (CDN trả ngay). Build báo lỗi nếu có ai thêm cookies()/headers()/searchParams vào trang này.
+export const dynamic = "error";
 
 export default function PrivacyPage() {
   return (

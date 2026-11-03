@@ -1,5 +1,5 @@
 import "server-only";
-import nodemailer, { type Transporter } from "nodemailer";
+import type { Transporter } from "nodemailer";
 
 /**
  * Gửi thư qua một hộp Gmail hệ thống (SMTP). Cấu hình:
@@ -8,6 +8,7 @@ import nodemailer, { type Transporter } from "nodemailer";
  *              KHÔNG phải mật khẩu đăng nhập Gmail
  *   SMTP_HOST, SMTP_PORT  tùy chọn, mặc định smtp.gmail.com:465
  * Gmail luôn gửi từ đúng địa chỉ SMTP_USER; tên hiển thị là tên sân, trả lời thư sẽ tới email chủ sân (Reply-To).
+ * nodemailer (~240 KB) chỉ được nạp khi thật sự gửi thư (import động), không làm chậm khởi động các route đặt sân.
  */
 let transporter: Transporter | null = null;
 
@@ -15,8 +16,9 @@ export function isMailerConfigured(): boolean {
   return Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
 }
 
-function getTransporter(): Transporter {
+async function getTransporter(): Promise<Transporter> {
   if (!transporter) {
+    const { default: nodemailer } = await import("nodemailer");
     const port = Number(process.env.SMTP_PORT ?? 465);
     transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST ?? "smtp.gmail.com",
@@ -42,7 +44,7 @@ export interface OutgoingMail {
 
 export async function sendMail(mail: OutgoingMail): Promise<void> {
   const fromName = mail.fromName.replace(/[\r\n"<>]+/g, " ").trim().slice(0, 80) || "Cầu Lông Đà Nẵng";
-  await getTransporter().sendMail({
+  await (await getTransporter()).sendMail({
     from: { name: fromName, address: process.env.SMTP_USER! },
     to: mail.to,
     replyTo: mail.replyTo || undefined,

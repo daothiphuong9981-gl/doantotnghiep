@@ -47,6 +47,7 @@ for (const n of names) {
 }
 
 await db.exec(file('../migrations/0010_payment_qr.sql'));
+for (const f of ['0011_email_outbox.sql', '0012_venue_reviews.sql', '0013_review_reminders.sql', '0014_performance2.sql']) await db.exec(file('../migrations/' + f));
 
 const bin = async (n) => (await q(`select bank_bin from venues where id = $1`, [ids[n]]))[0].bank_bin;
 ok('BIDV -> 970418', (await bin('BIDV')) === '970418');

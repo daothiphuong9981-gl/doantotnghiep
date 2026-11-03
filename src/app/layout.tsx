@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import { preconnect } from "react-dom";
-import { Navbar, NavbarFallback } from "@/components/navbar";
+import { Navbar } from "@/components/navbar";
+import { SessionProvider } from "@/components/navbar-session";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import "./globals.css";
 
@@ -10,22 +10,25 @@ export const metadata: Metadata = {
   description: "Tìm sân cầu lông trên bản đồ Đà Nẵng, xem giá theo khung giờ và đặt sân trực tuyến.",
 };
 
+/**
+ * Root layout KHÔNG đọc cookie hay phiên đăng nhập (phần người dùng của navbar chạy ở trình duyệt), nhờ vậy trang nào
+ * không tự đọc cookie/searchParams thì được tĩnh hóa. Đừng gọi getSession/createClient (supabase/server) ở đây.
+ */
 export default function RootLayout({ children }: LayoutProps<"/">) {
   // Mở sẵn kết nối tới máy chủ bản đồ nền để ô bản đồ đầu tiên về nhanh hơn
   preconnect("https://tiles.openfreemap.org", { crossOrigin: "anonymous" });
   return (
     <html lang="vi" className="h-full antialiased">
       <body className="flex min-h-full flex-col">
-        {/* Navbar đọc phiên đăng nhập; bọc Suspense để phần còn lại của trang (và loading.tsx) hiện ngay */}
-        <Suspense fallback={<NavbarFallback />}>
+        <SessionProvider>
           <Navbar />
-        </Suspense>
-        {isSupabaseConfigured ? null : (
-          <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
-            Chưa cấu hình Supabase. Hãy tạo file <code>.env.local</code> theo mẫu <code>.env.example</code> rồi khởi động lại.
-          </div>
-        )}
-        <main className="flex flex-1 flex-col">{children}</main>
+          {isSupabaseConfigured ? null : (
+            <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+              Chưa cấu hình Supabase. Hãy tạo file <code>.env.local</code> theo mẫu <code>.env.example</code> rồi khởi động lại.
+            </div>
+          )}
+          <main className="flex flex-1 flex-col">{children}</main>
+        </SessionProvider>
       </body>
     </html>
   );

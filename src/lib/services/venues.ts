@@ -1,12 +1,29 @@
-import { createClient as createAnonClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
 import { cache } from "react";
+import { CACHE_TAG } from "@/lib/cache-tags";
 import { addDays, currentHourInVietnam, hhmm, isValidDate, isWeekend, todayInVietnam } from "@/lib/format";
-import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/env";
 import { ratingSummaries } from "@/lib/services/reviews";
-import { createClient } from "@/lib/supabase/server";
+import { publicClient } from "@/lib/supabase/public";
 import { BOOKING_RULES } from "@/lib/constants";
-import { fail, ok, type Court, type PriceSlot, type Result, type SlotState, type Venue, type VenueCard, type VenueImage, type Ward } from "@/lib/types";
+import {
+  fail,
+  ok,
+  type Court,
+  type PriceSlot,
+  type RatingSummary,
+  type Result,
+  type SlotState,
+  type Venue,
+  type VenueCard,
+  type VenueImage,
+  type Ward,
+} from "@/lib/types";
+
+/*
+ * Mọi hàm trong tệp này chỉ đọc dữ liệu CÔNG KHAI bằng client ẩn danh (publicClient: không đọc cookie, không ghi
+ * Set-Cookie), nên dùng được trong unstable_cache và trong route GET có header CDN. Không thêm vào đây hàm nào đọc
+ * dữ liệu theo người dùng.
+ */
 
 const toCard = (row: Record<string, unknown>): VenueCard => ({
   id: Number(row.id),
@@ -30,8 +47,7 @@ const toCard = (row: Record<string, unknown>): VenueCard => ({
  */
 const cachedWards = unstable_cache(
   async (): Promise<Ward[]> => {
-    const supabase = createAnonClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
-    const { data, error } = await supabase.from("wards").select("id, name, type").order("id");
+    const { data, error } = await publicClient().from("wards").select("id, name, type").order("id");
     if (error) throw new Error(error.message);
     return (data ?? []) as Ward[];
   },
@@ -60,13 +76,47 @@ export interface VenueFilter {
   radiusKm?: number;
 }
 
+/** Tham số gửi cho hàm search_venues (dùng chung cho nhánh có và không lưu đệm). */
+function searchArgs(filter: VenueFilter) {
+  const { q, wardId, minPrice, maxPrice, date, startTime, lat, lng, radiusKm } = filter;
+  const hasPoint = lat !== undefined || lng !== undefined;
+  return {
+    p_q: q?.trim().slice(0, 100) || null,
+    p_ward_id: wardId ?? null,
+    p_min_price: minPrice ?? null,
+    p_max_price: maxPrice ?? null,
+    p_date: date ?? null,
+    p_start_time: startTime ?? null,
+    p_lat: lat ?? null,
+    p_lng: lng ?? null,
+    p_radius_km: hasPoint ? Math.min(Math.max(radiusKm ?? 30, 1), 100) : null,
+  };
+}
+
+type SearchRow = Record<string, unknown>;
+
+/**
+ * Danh sách sân KHÔNG lọc theo ngày giờ và KHÔNG theo tọa độ (trang chủ mặc định, lọc từ khóa/phường/giá): giống nhau
+ * với mọi người nên lưu đệm 60 giây, tag "venues" (chủ sân sửa sân, quản trị duyệt/ẩn sân thì xóa ngay).
+ * Lọc theo giờ trống (đổi theo phút) và theo vị trí người dùng thì không lưu đệm.
+ */
+const cachedSearch = unstable_cache(
+  async (args: ReturnType<typeof searchArgs>): Promise<SearchRow[]> => {
+    const { data, error } = await publicClient().rpc("search_venues", args);
+    if (error) throw new Error(error.message);
+    return (data ?? []) as SearchRow[];
+  },
+  ["venues-list-v1"],
+  { revalidate: 60, tags: [CACHE_TAG.venues] },
+);
+
 /**
  * PB09, PB10, PB12, PB13 - Danh sách sân đã duyệt, có thể lọc theo từ khóa (không phân biệt dấu),
  * phường/xã, khoảng giá và khung giờ còn trống. Có tọa độ thì sắp xếp theo khoảng cách (PostGIS).
- * Trợ lý AI ở Sprint 3 dùng lại đúng hàm này.
+ * Trợ lý AI dùng lại đúng hàm này; truyền sẵn `ratings` để nhiều lần tìm trong một câu hỏi chỉ đọc điểm một lần.
  */
-export async function listVenues(filter: VenueFilter): Promise<Result<VenueCard[]>> {
-  const { q, wardId, minPrice, maxPrice, date, startTime, lat, lng, radiusKm } = filter;
+export async function listVenues(filter: VenueFilter, ratings?: Promise<Map<number, RatingSummary>>): Promise<Result<VenueCard[]>> {
+  const { wardId, minPrice, maxPrice, date, startTime, lat, lng } = filter;
   const hasPoint = lat !== undefined || lng !== undefined;
   if (hasPoint && (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat!) > 90 || Math.abs(lng!) > 180)) {
     return fail(400, "Tọa độ không hợp lệ");
@@ -87,27 +137,24 @@ export async function listVenues(filter: VenueFilter): Promise<Result<VenueCard[
     if (date > addDays(today, maxDays)) return fail(400, `Chỉ xem được trong ${maxDays} ngày tới`);
   }
 
-  const supabase = await createClient();
+  const args = searchArgs(filter);
+  const cacheable = date === undefined && !hasPoint;
+  const search = async (): Promise<SearchRow[] | null> => {
+    try {
+      if (cacheable) return await cachedSearch(args);
+      const { data, error } = await publicClient().rpc("search_venues", args);
+      return error ? null : ((data ?? []) as SearchRow[]);
+    } catch {
+      return null;
+    }
+  };
   // Điểm đánh giá của mọi sân đã duyệt (khoảng 50 dòng) lấy song song với truy vấn tìm sân
-  const [{ data, error }, ratings] = await Promise.all([
-    supabase.rpc("search_venues", {
-    p_q: q?.trim().slice(0, 100) || null,
-    p_ward_id: wardId ?? null,
-    p_min_price: minPrice ?? null,
-    p_max_price: maxPrice ?? null,
-    p_date: date ?? null,
-    p_start_time: startTime ?? null,
-    p_lat: lat ?? null,
-    p_lng: lng ?? null,
-    p_radius_km: hasPoint ? Math.min(Math.max(radiusKm ?? 30, 1), 100) : null,
-    }),
-    ratingSummaries(),
-  ]);
-  if (error) return fail(500, "Không tải được danh sách sân");
+  const [rows, ratingMap] = await Promise.all([search(), ratings ?? ratingSummaries()]);
+  if (!rows) return fail(500, "Không tải được danh sách sân");
   return ok(
-    (data ?? []).map((row: Record<string, unknown>) => {
+    rows.map((row) => {
       const card = toCard(row);
-      const rating = ratings.get(card.id);
+      const rating = ratingMap.get(card.id);
       return { ...card, rating_avg: rating?.avg ?? null, rating_count: rating?.count ?? 0 };
     }),
   );
@@ -120,15 +167,11 @@ export interface VenueDetail {
   courts: Court[];
 }
 
-/**
- * PB11 - Chi tiết một sân đã duyệt. Không trả về thông tin tài khoản nhận tiền.
- * React cache: trang chi tiết và getAvailability trong cùng request chỉ đọc cơ sở dữ liệu một lần.
- */
-export const getVenueDetail = cache(async (id: number): Promise<Result<VenueDetail>> => {
-  if (!Number.isInteger(id) || id <= 0) return fail(404, "Không tìm thấy sân");
-  const supabase = await createClient();
-  // Một truy vấn duy nhất: PostgREST nhúng bảng giá, ảnh và sân con theo khóa ngoại (RLS vẫn áp dụng cho từng bảng)
-  const { data: venue } = await supabase
+/** Đọc chi tiết sân từ cơ sở dữ liệu (client ẩn danh). Không có sân đã duyệt hoặc lỗi thì ném ra để không lưu đệm. */
+async function loadVenueDetail(id: number): Promise<VenueDetail> {
+  // Một truy vấn duy nhất: PostgREST nhúng bảng giá, ảnh và sân con theo khóa ngoại (RLS vẫn áp dụng cho từng bảng).
+  // Chỉ chọn cột công khai: KHÔNG có owner_id, reject_reason, cột ngân hàng.
+  const { data: venue, error } = await publicClient()
     .from("venues")
     .select(
       "id, ward_id, name, address, description, contact_phone, latitude, longitude, open_time, close_time, hold_minutes, max_slots_per_booking, advance_days, max_active_holds, status, wards(name), price_slots(id, day_type, start_time, end_time, price), venue_images(id, storage_path, sort_order), courts(id, name, is_active)",
@@ -142,12 +185,13 @@ export const getVenueDetail = cache(async (id: number): Promise<Result<VenueDeta
     .order("id", { referencedTable: "venue_images" })
     .order("id", { referencedTable: "courts" })
     .maybeSingle();
-  if (!venue) return fail(404, "Không tìm thấy sân");
+  if (error) throw new Error(error.message);
+  if (!venue) throw new Error("NOT_FOUND");
 
   const { wards, price_slots: prices, venue_images: images, courts, ...rest } = venue;
   const wardRow = wards as unknown as { name: string } | { name: string }[] | null;
   const wardName = Array.isArray(wardRow) ? wardRow[0]?.name : wardRow?.name;
-  return ok({
+  return {
     venue: {
       ...rest,
       latitude: Number(rest.latitude),
@@ -155,11 +199,29 @@ export const getVenueDetail = cache(async (id: number): Promise<Result<VenueDeta
       open_time: hhmm(rest.open_time),
       close_time: hhmm(rest.close_time),
       ward_name: wardName ?? "",
-    },
+    } as VenueDetail["venue"],
     prices: ((prices ?? []) as PriceSlot[]).map((p) => ({ ...p, start_time: hhmm(p.start_time), end_time: hhmm(p.end_time) })),
     images: (images ?? []) as VenueImage[],
     courts: (courts ?? []) as Court[],
-  });
+  };
+}
+
+/**
+ * PB11 - Chi tiết một sân đã duyệt. Không trả về thông tin tài khoản nhận tiền.
+ * Lưu đệm 300 giây (tag "venue:<id>", "venues"); sân không tồn tại/chưa duyệt hoặc lỗi thì không lưu đệm.
+ * React cache: trang chi tiết và getAvailability trong cùng request chỉ đọc một lần.
+ */
+export const getVenueDetail = cache(async (id: number): Promise<Result<VenueDetail>> => {
+  if (!Number.isInteger(id) || id <= 0) return fail(404, "Không tìm thấy sân");
+  try {
+    const detail = await unstable_cache(() => loadVenueDetail(id), ["venue-detail-v1", String(id)], {
+      revalidate: 300,
+      tags: [CACHE_TAG.venues, CACHE_TAG.venue(id)],
+    })();
+    return ok(detail);
+  } catch {
+    return fail(404, "Không tìm thấy sân");
+  }
 });
 
 export interface AvailabilitySlot {
@@ -181,23 +243,43 @@ export function priceFor(prices: PriceSlot[], date: string, startTime: string): 
   return (match(dayType) ?? match("weekday"))?.price ?? null;
 }
 
-/** PB11 - Trạng thái từng khung giờ 60 phút của từng sân con trong một ngày. */
-export async function getAvailability(venueId: number, date: string): Promise<Result<Availability>> {
+export type TakenSlot = { court_id: number; start_time: string; state: "held" | "booked" };
+
+/**
+ * Các khung giờ đã có người giữ chỗ/đặt của một sân trong một ngày. KHÔNG lưu đệm (đổi theo phút, giữ chỗ hết hạn
+ * dựa vào now()). Lỗi thì trả null. Trang chi tiết gọi sớm hàm này song song với chi tiết sân rồi truyền vào getAvailability.
+ */
+export async function takenSlots(venueId: number, date: string): Promise<TakenSlot[] | null> {
+  if (!Number.isInteger(venueId) || venueId <= 0 || !isValidDate(date)) return null;
+  try {
+    const { data, error } = await publicClient().rpc("venue_taken_slots", { p_venue_id: venueId, p_date: date });
+    return error ? null : ((data ?? []) as TakenSlot[]);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * PB11 - Trạng thái từng khung giờ 60 phút của từng sân con trong một ngày, kèm chi tiết sân đã đọc
+ * (trợ lý AI dùng lại max_slots_per_booking, không đọc chi tiết lần nữa).
+ * `taken`: kết quả takenSlots(venueId, date) đã khởi động sớm (nếu có).
+ */
+export async function getAvailabilityDetail(
+  venueId: number,
+  date: string,
+  taken?: Promise<TakenSlot[] | null>,
+): Promise<Result<{ availability: Availability; detail: VenueDetail }>> {
   if (!isValidDate(date)) return fail(400, "Ngày không hợp lệ");
   const today = todayInVietnam();
   if (date < today) return fail(400, "Không xem được ngày đã qua");
 
   // Thông tin sân và các khung giờ đã có người đặt không phụ thuộc nhau: lấy song song
-  const supabase = await createClient();
-  const [detail, { data: taken, error }] = await Promise.all([
-    getVenueDetail(venueId),
-    supabase.rpc("venue_taken_slots", { p_venue_id: venueId, p_date: date }),
-  ]);
+  const [detail, rows] = await Promise.all([getVenueDetail(venueId), taken ?? takenSlots(venueId, date)]);
   if (!detail.ok) return detail;
   const { venue, prices, courts } = detail.data;
-  if (error) return fail(500, "Không tải được khung giờ");
+  if (!rows) return fail(500, "Không tải được khung giờ");
   const takenMap = new Map<string, "held" | "booked">();
-  for (const row of taken ?? []) takenMap.set(`${row.court_id}|${hhmm(row.start_time)}`, row.state);
+  for (const row of rows) takenMap.set(`${row.court_id}|${hhmm(row.start_time)}`, row.state);
 
   const openHour = Number(venue.open_time.slice(0, 2));
   const closeHour = Number(venue.close_time.slice(0, 2));
@@ -206,16 +288,25 @@ export async function getAvailability(venueId: number, date: string): Promise<Re
   const nowHour = currentHourInVietnam();
 
   return ok({
-    date,
-    hours,
-    courts: courts.map((court) => ({
-      id: court.id,
-      name: court.name,
-      slots: hours.map((start) => {
-        const isPast = date === today && Number(start.slice(0, 2)) <= nowHour;
-        const state: SlotState = isPast ? "past" : (takenMap.get(`${court.id}|${start}`) ?? "available");
-        return { start_time: start, price: priceFor(prices, date, start), state };
-      }),
-    })),
+    detail: detail.data,
+    availability: {
+      date,
+      hours,
+      courts: courts.map((court) => ({
+        id: court.id,
+        name: court.name,
+        slots: hours.map((start) => {
+          const isPast = date === today && Number(start.slice(0, 2)) <= nowHour;
+          const state: SlotState = isPast ? "past" : (takenMap.get(`${court.id}|${start}`) ?? "available");
+          return { start_time: start, price: priceFor(prices, date, start), state };
+        }),
+      })),
+    },
   });
+}
+
+/** PB11 - Trạng thái từng khung giờ 60 phút của từng sân con trong một ngày. */
+export async function getAvailability(venueId: number, date: string, taken?: Promise<TakenSlot[] | null>): Promise<Result<Availability>> {
+  const result = await getAvailabilityDetail(venueId, date, taken);
+  return result.ok ? ok(result.data.availability) : result;
 }

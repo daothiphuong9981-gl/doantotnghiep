@@ -1,5 +1,4 @@
 import { after } from "next/server";
-import QRCode from "qrcode";
 import { dbFail, type DbError } from "@/lib/db-errors";
 import { describeDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
@@ -105,6 +104,8 @@ async function paymentQr(bin: string | null, accountNumber: string, amount: numb
   if (!canMakeVietQr(input)) return null;
   const payload = vietQrPayload(input);
   try {
+    // Nạp thư viện QR khi cần (chỉ lượt đang giữ chỗ), không nằm trong phần khởi động của các route đặt sân
+    const { default: QRCode } = await import("qrcode");
     const image = await QRCode.toDataURL(payload, { errorCorrectionLevel: "M", margin: 2, width: 480 });
     return { payload, image };
   } catch {

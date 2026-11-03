@@ -9,6 +9,8 @@ import type { AppNotification, NotificationKind } from "@/lib/types";
 const POLL_MS = 45_000;
 /** Thời gian hiện popup thông báo mới (ms). */
 const TOAST_MS = 7_000;
+/** Trình duyệt không có requestIdleCallback (Safari) thì hỏi lần đầu sau khoảng này (ms). */
+const FIRST_DELAY_MS = 2_000;
 
 const DOT: Record<NotificationKind, string> = {
   booking_new: "bg-amber-500",
@@ -73,7 +75,11 @@ export function NotificationBell() {
   }, [router]);
 
   useEffect(() => {
-    const first = setTimeout(() => void refresh(), 0);
+    // Lần hỏi đầu đợi trình duyệt rảnh (trang đã tải xong) để không tranh mạng/CPU với nội dung chính
+    const idle = typeof window.requestIdleCallback === "function";
+    const first = idle
+      ? window.requestIdleCallback(() => void refresh(), { timeout: FIRST_DELAY_MS + 1_000 })
+      : window.setTimeout(() => void refresh(), FIRST_DELAY_MS);
     const timer = setInterval(() => {
       if (document.visibilityState === "visible") void refresh();
     }, POLL_MS);
@@ -82,7 +88,8 @@ export function NotificationBell() {
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
-      clearTimeout(first);
+      if (idle) window.cancelIdleCallback(first);
+      else clearTimeout(first);
       clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };

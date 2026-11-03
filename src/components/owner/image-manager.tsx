@@ -3,10 +3,9 @@
 import { useRef, useState, useTransition } from "react";
 import { addImageAction, removeImageAction } from "@/app/owner/actions";
 import { Alert } from "@/components/ui/controls";
-import { createClient } from "@/lib/supabase/client";
 import { IMAGE_BUCKET, imageUrl } from "@/lib/supabase/env";
 import type { VenueImage } from "@/lib/types";
-import { IMAGE_TYPES, MAX_IMAGE_BYTES, MAX_IMAGES } from "@/lib/validation";
+import { IMAGE_TYPES, MAX_IMAGE_BYTES, MAX_IMAGES } from "@/lib/limits";
 
 /** PB08 - Tải ảnh sân lên Supabase Storage (tối đa 5 ảnh, JPG/PNG, mỗi ảnh ≤ 2 MB). */
 export function ImageManager({ venueId, images }: { venueId: number; images: VenueImage[] }) {
@@ -25,7 +24,10 @@ export function ImageManager({ venueId, images }: { venueId: number; images: Ven
     startTransition(async () => {
       const ext = file.type === "image/png" ? "png" : "jpg";
       const path = `${venueId}/${crypto.randomUUID()}.${ext}`;
-      const upload = await createClient().storage.from(IMAGE_BUCKET).upload(path, file, { contentType: file.type });
+      // Thư viện Supabase (~250 KB) chỉ tải khi chủ sân thực sự tải ảnh lên, không nằm trong gói JS ban đầu của trang
+      const supabase = await import("@/lib/supabase/client").catch(() => null);
+      if (!supabase) return setError("Không tải được ảnh lên. Vui lòng thử lại.");
+      const upload = await supabase.createClient().storage.from(IMAGE_BUCKET).upload(path, file, { contentType: file.type });
       if (upload.error) return setError("Không tải được ảnh lên. Vui lòng thử lại.");
       const saved = await addImageAction(venueId, path);
       if (saved.error) setError(saved.error);

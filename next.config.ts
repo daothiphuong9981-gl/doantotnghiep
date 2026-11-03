@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Dự án dùng mô hình render động thông thường (đọc cookie đăng nhập ở mỗi yêu cầu),
-  // nên không bật Cache Components.
+  // Dự án dùng mô hình cũ (không bật Cache Components): trang công khai không đọc cookie thì được tĩnh hóa,
+  // trang cần phiên đăng nhập render động; dữ liệu công khai lưu đệm bằng unstable_cache + tag.
   cacheComponents: false,
   experimental: {
     // Trang động mặc định không được giữ ở trình duyệt: bấm quay lại trang vừa xem cũng phải gọi máy chủ.
@@ -19,6 +19,10 @@ const nextConfig: NextConfig = {
     remotePatterns: [{ protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/object/public/**" }],
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 2_678_400,
+  },
+  // Tệp worker MapLibre trong public/vendor luôn được gọi kèm ?v=<phiên bản> nên lưu đệm vĩnh viễn ở trình duyệt và CDN.
+  async headers() {
+    return [{ source: "/vendor/:path*", headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }] }];
   },
   turbopack: {
     rules: {

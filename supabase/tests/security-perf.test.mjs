@@ -36,6 +36,8 @@ await db.exec(`grant select on all tables in schema public to anon, authenticate
 await db.exec(file('../migrations/0008_performance.sql'));
 await db.exec(file('../migrations/0009_security.sql'));
 await db.exec(file('../migrations/0010_payment_qr.sql'));
+// Các migration sau (0014 viết lại RLS booking_items): nạp đủ để kiểm tra hồi quy
+for (const f of ['0011_email_outbox.sql', '0012_venue_reviews.sql', '0013_review_reminders.sql', '0014_performance2.sql']) await db.exec(file('../migrations/' + f));
 
 // ---------------------------------------------------------------- 0008: index
 const idx = (await q(`select indexname from pg_indexes where schemaname = 'public'`)).map((r) => r.indexname);

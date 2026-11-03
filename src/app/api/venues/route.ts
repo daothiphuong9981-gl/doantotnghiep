@@ -1,10 +1,12 @@
 import type { NextRequest } from "next/server";
-import { respond } from "@/lib/api";
+import { PUBLIC_CACHE, respond } from "@/lib/api";
 import { listVenues } from "@/lib/services/venues";
 
 /**
  * GET /api/venues - Tìm kiếm và lọc sân đã duyệt.
  * Tham số (đều tùy chọn): q, ward_id, min_price, max_price, date + start_time, lat + lng, radius_km.
+ * Công khai, không đọc cookie (client ẩn danh). CDN chỉ giữ khi KHÔNG lọc theo giờ trống (đổi theo phút) và KHÔNG có
+ * tọa độ (vị trí người dùng, không để CDN lưu theo URL).
  */
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -21,5 +23,10 @@ export async function GET(request: NextRequest) {
     lng: num("lng"),
     radiusKm: num("radius_km"),
   });
-  return respond(result.ok ? { ok: true, data: { total: result.data.length, venues: result.data } } : result);
+  const personal = ["date", "start_time", "lat", "lng", "radius_km"].some((key) => params.has(key));
+  return respond(
+    result.ok ? { ok: true, data: { total: result.data.length, venues: result.data } } : result,
+    200,
+    personal ? PUBLIC_CACHE.none : PUBLIC_CACHE.short,
+  );
 }

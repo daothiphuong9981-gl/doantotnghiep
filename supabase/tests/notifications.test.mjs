@@ -27,7 +27,7 @@ alter default privileges in schema public grant execute on functions to anon, au
 `);
 await db.exec(file('../migrations/0001_init.sql'));
 await db.exec(file('../seed.sql'));
-for (const f of ['0002_bookings.sql', '0004_venue_rules.sql', '0005_admin_stats_ai.sql', '0006_notifications.sql', '0007_overdue_awaiting.sql', '0008_performance.sql', '0009_security.sql', '0010_payment_qr.sql', '0011_email_outbox.sql', '0012_venue_reviews.sql', '0013_review_reminders.sql']) await db.exec(file('../migrations/' + f));
+for (const f of ['0002_bookings.sql', '0004_venue_rules.sql', '0005_admin_stats_ai.sql', '0006_notifications.sql', '0007_overdue_awaiting.sql', '0008_performance.sql', '0009_security.sql', '0010_payment_qr.sql', '0011_email_outbox.sql', '0012_venue_reviews.sql', '0013_review_reminders.sql', '0014_performance2.sql']) await db.exec(file('../migrations/' + f));
 await db.exec(`grant select, insert, update, delete on all tables in schema public to authenticated; grant usage, select on all sequences in schema public to authenticated;`);
 // RLS của 0006 phải tự đứng vững: thu hồi lại quyền ghi thừa vừa cấp chung cho bảng notifications
 await db.exec(`revoke insert, update, delete on public.notifications from authenticated;`);

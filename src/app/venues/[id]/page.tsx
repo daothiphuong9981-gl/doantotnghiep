@@ -9,24 +9,42 @@ import { buttonClass, Chip, CourtPlaceholder } from "@/components/ui/controls";
 import { addDays, currentHourInVietnam, describeDate, formatVnd, isValidDate, todayInVietnam } from "@/lib/format";
 import { getSession } from "@/lib/auth";
 import { listVenueReviews } from "@/lib/services/reviews";
-import { getAvailability, getVenueDetail } from "@/lib/services/venues";
+import { getAvailability, getVenueDetail, takenSlots } from "@/lib/services/venues";
+import { BOOKING_RULES } from "@/lib/constants";
 import { imageUrl } from "@/lib/supabase/env";
 import { directionsUrl } from "@/lib/venue-filter";
 
 const DAY_LABEL = { weekday: "Ngày thường", weekend: "Cuối tuần" } as const;
 
-// PB11, PB14 - Trang chi tiết sân: khách xem được; người chơi chọn khung giờ và giữ chỗ
+/**
+ * Đoán sớm ngày sẽ hiển thị (chưa có giờ đóng cửa/số ngày đặt trước của sân) để hỏi giờ trống song song với chi tiết sân.
+ * Có ?date= hợp lệ thì dùng ngày đó; không có thì hôm nay, và cả ngày mai khi đã chiều tối (nhiều sân đóng cửa 21-23 giờ).
+ * Đoán sai chỉ tốn thêm một lượt hỏi nối tiếp như trước.
+ */
+function guessDates(requested: unknown, today: string): string[] {
+  if (typeof requested === "string" && isValidDate(requested) && requested >= today && requested <= addDays(today, BOOKING_RULES.advance_days.max)) {
+    return [requested];
+  }
+  return currentHourInVietnam() >= 18 ? [today, addDays(today, 1)] : [today];
+}
+
+/*
+ * PB11, PB14 - Trang chi tiết sân: khách xem được; người chơi chọn khung giờ và giữ chỗ.
+ * Trang vẫn render động (đọc ?date=, ?time=, giờ trống đổi theo phút, vai trò người xem cho SlotPicker) – không tĩnh hóa;
+ * chi tiết sân và trang đánh giá đầu lấy từ Data Cache (client ẩn danh), giờ trống và phiên thì không lưu đệm.
+ */
 export default async function VenuePage({ params, searchParams }: PageProps<"/venues/[id]">) {
   const { id } = await params;
   const query = await searchParams;
   const venueId = Number(id);
-  // Phiên đăng nhập không phụ thuộc thông tin sân: lấy song song, bớt một lượt chờ Supabase
-  // Đánh giá cũng không phụ thuộc thông tin sân: lấy cùng lúc
+  const today = todayInVietnam();
+  // Giờ trống của ngày đoán trước được hỏi cùng lúc với chi tiết sân, phiên và đánh giá: một vòng chờ thay vì hai
+  // (Map ở tệp này là component bản đồ nên dùng object thường)
+  const early: Record<string, ReturnType<typeof takenSlots>> = Object.fromEntries(guessDates(query.date, today).map((d) => [d, takenSlots(venueId, d)]));
   const [detail, session, reviews] = await Promise.all([getVenueDetail(venueId), getSession(), listVenueReviews(venueId)]);
   if (!detail.ok) notFound();
   const { venue, prices, images } = detail.data;
 
-  const today = todayInVietnam();
   // Mặc định xem hôm nay; nếu hôm nay đã hết khung giờ thì xem ngày mai
   const closeHour = Number(venue.close_time.slice(0, 2));
   const defaultDate = currentHourInVietnam() >= closeHour - 1 ? addDays(today, 1) : today;
@@ -34,7 +52,7 @@ export default async function VenuePage({ params, searchParams }: PageProps<"/ve
   const date = isValidDate(requested) && requested >= today && requested <= addDays(today, venue.advance_days) ? requested : defaultDate;
   // Giờ được chọn sẵn khi đi từ trợ lý AI hoặc bộ lọc khung giờ
   const focusTime = typeof query.time === "string" && /^([01]\d|2[0-3]):00$/.test(query.time) ? query.time : null;
-  const availability = await getAvailability(venueId, date);
+  const availability = await getAvailability(venueId, date, early[date]);
   const days = Array.from({ length: venue.advance_days + 1 }, (_, i) => addDays(today, i));
 
   return (

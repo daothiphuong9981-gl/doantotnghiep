@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { savePricesAction } from "@/app/owner/actions";
 import { Alert, Button, inputClass } from "@/components/ui/controls";
 import type { PriceSlot } from "@/lib/types";
-import { findPriceOverlap } from "@/lib/validation";
+import { findPriceOverlap } from "@/lib/limits";
 
 const EMPTY: PriceSlot = { day_type: "weekday", start_time: "05:00", end_time: "17:00", price: 50000 };
 

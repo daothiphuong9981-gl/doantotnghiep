@@ -1,4 +1,7 @@
+import { unstable_cache } from "next/cache";
+import { CACHE_TAG } from "@/lib/cache-tags";
 import { dbFail } from "@/lib/db-errors";
+import { publicClient } from "@/lib/supabase/public";
 import { createClient } from "@/lib/supabase/server";
 import {
   fail,
@@ -22,29 +25,63 @@ export const REVIEWS_PAGE_SIZE = 20;
 
 const validId = (id: number) => Number.isInteger(id) && id > 0;
 
-/** Điểm trung bình theo sân; venueIds bỏ trống = mọi sân đã duyệt (danh sách trang chủ). */
+type RatingRow = { venue_id: number; rating_avg: number | string; rating_count: number };
+
+/**
+ * Điểm trung bình theo sân (dữ liệu công khai, hàm security definer không dùng auth.uid()): client ẩn danh, lưu đệm
+ * 300 giây với tag "ratings" (gửi/sửa/ẩn đánh giá, đổi trạng thái sân thì xóa ngay). Lỗi thì ném ra để không lưu đệm.
+ * Lưu mảng dòng (Map không qua được bộ lưu đệm JSON).
+ */
+const cachedRatings = unstable_cache(
+  async (venueIds: number[] | null): Promise<RatingRow[]> => {
+    const { data, error } = await publicClient().rpc("venue_rating_summary", { p_venue_ids: venueIds });
+    if (error) throw new Error(error.message);
+    return (data ?? []) as RatingRow[];
+  },
+  ["venue-ratings-v1"],
+  { revalidate: 300, tags: [CACHE_TAG.ratings] },
+);
+
+/** Điểm trung bình theo sân; venueIds bỏ trống = mọi sân đã duyệt (danh sách trang chủ). Lỗi thì trả Map rỗng như trước. */
 export async function ratingSummaries(venueIds?: number[]): Promise<Map<number, RatingSummary>> {
-  const supabase = await createClient();
-  const { data } = await supabase.rpc("venue_rating_summary", { p_venue_ids: venueIds ?? null });
-  return new Map(
-    ((data ?? []) as { venue_id: number; rating_avg: number | string; rating_count: number }[]).map((r) => [
-      Number(r.venue_id),
-      { avg: Number(r.rating_avg), count: Number(r.rating_count) },
-    ]),
-  );
+  let rows: RatingRow[] = [];
+  try {
+    rows = await cachedRatings(venueIds && venueIds.length > 0 ? [...venueIds].sort((a, b) => a - b) : null);
+  } catch {
+    rows = [];
+  }
+  return new Map(rows.map((r) => [Number(r.venue_id), { avg: Number(r.rating_avg), count: Number(r.rating_count) }]));
 }
 
-/** Đánh giá đang hiện của một sân (mới nhất trước) kèm điểm trung bình. */
+/** Một trang đánh giá đang hiện của một sân (ném lỗi để không lưu đệm khi truy vấn hỏng). */
+async function loadReviewPage(venueId: number, offset: number): Promise<PublicReview[]> {
+  const { data, error } = await publicClient().rpc("list_venue_reviews", { p_venue_id: venueId, p_limit: REVIEWS_PAGE_SIZE + 1, p_offset: offset });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as PublicReview[];
+}
+
+/**
+ * Đánh giá đang hiện của một sân (mới nhất trước) kèm điểm trung bình. Trang đầu (hiện trên trang chi tiết sân) lưu đệm
+ * 300 giây, tag "reviews:<id>", "reviews", "venue:<id>"; các trang sau đọc trực tiếp. Tên người viết đã được ẩn danh
+ * trong SQL (review_author) nên kết quả giống nhau với mọi người xem.
+ */
 export async function listVenueReviews(venueId: number, page = 0): Promise<Result<{ reviews: PublicReview[]; summary: RatingSummary; has_more: boolean }>> {
   if (!validId(venueId)) return fail(404, "Không tìm thấy sân");
-  const offset = Math.max(0, Math.floor(page)) * REVIEWS_PAGE_SIZE;
-  const supabase = await createClient();
-  const [list, summaries] = await Promise.all([
-    supabase.rpc("list_venue_reviews", { p_venue_id: venueId, p_limit: REVIEWS_PAGE_SIZE + 1, p_offset: offset }),
-    ratingSummaries([venueId]),
-  ]);
-  if (list.error) return fail(500, "Không tải được đánh giá");
-  const rows = (list.data ?? []) as PublicReview[];
+  const pageIndex = Math.max(0, Math.floor(page));
+  const offset = pageIndex * REVIEWS_PAGE_SIZE;
+  const list = async (): Promise<PublicReview[] | null> => {
+    try {
+      if (pageIndex > 0) return await loadReviewPage(venueId, offset);
+      return await unstable_cache(() => loadReviewPage(venueId, 0), ["venue-reviews-v1", String(venueId)], {
+        revalidate: 300,
+        tags: [CACHE_TAG.reviews, CACHE_TAG.venueReviews(venueId), CACHE_TAG.venue(venueId)],
+      })();
+    } catch {
+      return null;
+    }
+  };
+  const [rows, summaries] = await Promise.all([list(), ratingSummaries([venueId])]);
+  if (!rows) return fail(500, "Không tải được đánh giá");
   return ok({
     reviews: rows.slice(0, REVIEWS_PAGE_SIZE),
     summary: summaries.get(venueId) ?? { avg: null, count: 0 },

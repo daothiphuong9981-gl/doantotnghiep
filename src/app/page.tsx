@@ -12,7 +12,9 @@ async function initialSearch(filter: typeof EMPTY_FILTER) {
   return { result: await listVenues({}), filter: EMPTY_FILTER };
 }
 
-// PB09, PB12, PB13 - Trang chủ: tìm kiếm, lọc và bản đồ các sân đã duyệt
+// PB09, PB12, PB13 - Trang chủ: tìm kiếm, lọc và bản đồ các sân đã duyệt.
+// Vẫn render động (bộ lọc trên URL, ngày/giờ hiện tại, thông báo ?deleted=1) nhưng không đọc cookie: danh sách mặc định,
+// điểm đánh giá và phường, xã lấy từ Data Cache (client ẩn danh, tag "venues"/"ratings"/"wards").
 export default async function HomePage({ searchParams }: PageProps<"/">) {
   const query = await searchParams;
   const [search, wards] = isSupabaseConfigured ? await Promise.all([initialSearch(filterFromParams(query)), listWards()]) : [null, null];

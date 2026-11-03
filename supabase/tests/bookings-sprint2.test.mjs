@@ -20,7 +20,7 @@ await db.exec(read('../migrations/0001_init.sql'));
 await db.exec(read('../seed.sql'));
 await db.exec(read('../migrations/0002_bookings.sql'));
 await db.exec(read('../migrations/0004_venue_rules.sql'));
-for (const f of ['0005_admin_stats_ai.sql', '0006_notifications.sql', '0007_overdue_awaiting.sql', '0008_performance.sql', '0009_security.sql', '0010_payment_qr.sql', '0011_email_outbox.sql', '0012_venue_reviews.sql', '0013_review_reminders.sql']) await db.exec(read('../migrations/' + f));
+for (const f of ['0005_admin_stats_ai.sql', '0006_notifications.sql', '0007_overdue_awaiting.sql', '0008_performance.sql', '0009_security.sql', '0010_payment_qr.sql', '0011_email_outbox.sql', '0012_venue_reviews.sql', '0013_review_reminders.sql', '0014_performance2.sql']) await db.exec(read('../migrations/' + f));
 
 const q = async (sql, p) => (await db.query(sql, p)).rows;
 const as = async (uid, role, fn) => {

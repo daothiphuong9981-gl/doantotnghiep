@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { expireTagsInAction, venueTags } from "@/lib/cache-tags";
 import { createVenue, replacePrices, setVenueSuspended, updateVenue } from "@/lib/services/owner";
 import { createClient } from "@/lib/supabase/server";
 import type { PriceSlot } from "@/lib/types";
@@ -21,6 +22,8 @@ export async function saveVenueAction(_prev: VenueFormState, form: FormData): Pr
   const id = Number(form.get("id") ?? 0);
   const result = id ? await updateVenue(id, input) : await createVenue(input);
   if (!result.ok) return { error: result.message, errors: result.errors, values: input };
+  // Sân đã có: xóa ngay dữ liệu công khai đang lưu đệm (chi tiết, danh sách) để chủ sân và khách thấy thay đổi
+  if (id) expireTagsInAction(venueTags(id));
   revalidatePath("/owner/venues");
   revalidatePath("/");
   if (!id) redirect(`/owner/venues/${result.data.id}?created=1`);
@@ -30,6 +33,7 @@ export async function saveVenueAction(_prev: VenueFormState, form: FormData): Pr
 /** PB07 - Tạm ngừng hoặc mở lại sân. */
 export async function toggleSuspendAction(form: FormData) {
   await setVenueSuspended(Number(form.get("id")), form.get("suspend") === "1");
+  expireTagsInAction(venueTags(Number(form.get("id"))));
   revalidatePath("/owner/venues");
   revalidatePath("/");
 }
@@ -38,6 +42,7 @@ export async function toggleSuspendAction(form: FormData) {
 export async function savePricesAction(venueId: number, prices: PriceSlot[]): Promise<{ error?: string; success?: string }> {
   const result = await replacePrices(venueId, prices);
   if (!result.ok) return { error: result.message };
+  expireTagsInAction(venueTags(venueId));
   revalidatePath(`/owner/venues/${venueId}`);
   revalidatePath(`/venues/${venueId}`);
   return { success: "Đã lưu bảng giá." };
@@ -57,6 +62,7 @@ export async function addImageAction(venueId: number, storagePath: string): Prom
     await supabase.storage.from("venue-images").remove([storagePath]);
     return { error: "Không lưu được ảnh" };
   }
+  expireTagsInAction(venueTags(venueId));
   revalidatePath(`/owner/venues/${venueId}`);
   revalidatePath(`/venues/${venueId}`);
   return {};
@@ -67,6 +73,7 @@ export async function removeImageAction(venueId: number, imageId: number): Promi
   const { data } = await supabase.from("venue_images").delete().eq("id", imageId).eq("venue_id", venueId).select("storage_path").maybeSingle();
   if (!data) return { error: "Không xóa được ảnh" };
   await supabase.storage.from("venue-images").remove([data.storage_path]);
+  expireTagsInAction(venueTags(venueId));
   revalidatePath(`/owner/venues/${venueId}`);
   revalidatePath(`/venues/${venueId}`);
   return {};

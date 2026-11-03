@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { homeOf } from "@/lib/auth";
+import { ACCOUNT_TAGS, CACHE_TAG, expireTagsInAction } from "@/lib/cache-tags";
 import { changePassword, login, logout, register } from "@/lib/services/auth";
 import { deleteMe, updateMe } from "@/lib/services/profile";
 
@@ -48,6 +49,8 @@ export async function updateProfileAction(_prev: FormState, form: FormData): Pro
   const values = { full_name: str(form, "full_name"), phone: str(form, "phone") };
   const result = await updateMe(values);
   if (!result.ok) return { error: result.message, values };
+  // Họ tên hiện trong đánh giá công khai (khi không ẩn tên): xóa trang đánh giá đang lưu đệm
+  expireTagsInAction([CACHE_TAG.reviews]);
   revalidatePath("/", "layout");
   return { success: "Đã lưu thông tin cá nhân.", values };
 }
@@ -63,6 +66,8 @@ export async function deleteAccountAction(_prev: FormState, form: FormData): Pro
   if (form.get("confirm") !== "on") return { error: "Hãy đánh dấu xác nhận trước khi xóa tài khoản." };
   const result = await deleteMe({ password: str(form, "password") });
   if (!result.ok) return { error: result.message };
+  // Tên trong đánh giá, sân và số điện thoại của chủ sân không được còn trong dữ liệu công khai đang lưu đệm
+  expireTagsInAction(ACCOUNT_TAGS);
   revalidatePath("/", "layout");
   redirect("/?deleted=1");
 }
