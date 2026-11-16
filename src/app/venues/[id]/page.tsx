@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -15,6 +16,23 @@ import { imageUrl } from "@/lib/supabase/env";
 import { directionsUrl } from "@/lib/venue-filter";
 
 const DAY_LABEL = { weekday: "Ngày thường", weekend: "Cuối tuần" } as const;
+
+/** Tiêu đề, mô tả riêng cho từng sân (getVenueDetail có React cache + Data Cache nên không truy vấn thêm). */
+export async function generateMetadata({ params }: PageProps<"/venues/[id]">): Promise<Metadata> {
+  const { id } = await params;
+  const detail = await getVenueDetail(Number(id));
+  if (!detail.ok) return { title: "Không tìm thấy sân - Cầu Lông Đà Nẵng" };
+  const { venue, images } = detail.data;
+  const where = [venue.address, venue.ward_name].filter(Boolean).join(", ");
+  const description = (venue.description?.trim() || `Sân cầu lông ${venue.name} tại ${where}. Xem giờ trống, bảng giá và đặt sân trực tuyến.`).slice(0, 160);
+  const cover = images[0] ? imageUrl(images[0].storage_path) : null;
+  return {
+    title: `${venue.name} - Đặt sân cầu lông Đà Nẵng`,
+    description,
+    alternates: { canonical: `/venues/${venue.id}` },
+    openGraph: { title: venue.name, description, type: "website", ...(cover ? { images: [cover] } : {}) },
+  };
+}
 
 /**
  * Đoán sớm ngày sẽ hiển thị (chưa có giờ đóng cửa/số ngày đặt trước của sân) để hỏi giờ trống song song với chi tiết sân.

@@ -4,15 +4,19 @@ import { useState, useTransition } from "react";
 import { savePricesAction } from "@/app/owner/actions";
 import { Alert, Button, inputClass } from "@/components/ui/controls";
 import type { PriceSlot } from "@/lib/types";
-import { findPriceOverlap } from "@/lib/limits";
+import { findPriceOverlap, uncoveredHours } from "@/lib/limits";
 
 const EMPTY: PriceSlot = { day_type: "weekday", start_time: "05:00", end_time: "17:00", price: 50000 };
 
 /** PB08 - Bảng giá theo khung giờ, tách ngày thường và cuối tuần. */
-export function PriceEditor({ venueId, initial }: { venueId: number; initial: PriceSlot[] }) {
+const onHour = (t: string) => /^([01]\d|2[0-3]):00$/.test(t);
+
+export function PriceEditor({ venueId, initial, openTime, closeTime }: { venueId: number; initial: PriceSlot[]; openTime?: string; closeTime?: string }) {
   const [rows, setRows] = useState<PriceSlot[]>(initial.length > 0 ? initial : [EMPTY]);
   const [message, setMessage] = useState<{ error?: string; success?: string }>({});
   const [pending, startTransition] = useTransition();
+
+  const missing = openTime && closeTime ? uncoveredHours(rows.filter((r) => onHour(r.start_time) && onHour(r.end_time)), openTime, closeTime) : [];
 
   const update = (index: number, patch: Partial<PriceSlot>) => {
     setRows((current) => current.map((row, i) => (i === index ? { ...row, ...patch } : row)));
@@ -20,6 +24,7 @@ export function PriceEditor({ venueId, initial }: { venueId: number; initial: Pr
   };
 
   function save() {
+    if (rows.some((r) => !onHour(r.start_time) || !onHour(r.end_time))) return setMessage({ error: "Giờ bắt đầu và kết thúc phải là giờ chẵn (ví dụ 05:00, 17:00)" });
     const invalid = rows.find((r) => !(r.end_time > r.start_time) || !Number.isFinite(r.price) || r.price < 0);
     if (invalid) return setMessage({ error: "Giờ kết thúc phải sau giờ bắt đầu và giá không được âm" });
     const overlap = findPriceOverlap(rows);
@@ -81,6 +86,11 @@ export function PriceEditor({ venueId, initial }: { venueId: number; initial: Pr
       </table>
       </div>
       <div className="flex flex-col gap-2 p-4">
+        {missing.length > 0 ? (
+          <Alert tone="info">
+            Giờ mở cửa chưa có giá ngày thường: {missing.join(", ")}. Người chơi không đặt được các giờ này cho tới khi bạn thêm khung giá.
+          </Alert>
+        ) : null}
         {message.error ? <Alert>{message.error}</Alert> : null}
         {message.success ? <Alert tone="success">{message.success}</Alert> : null}
         <Button type="button" onClick={save} disabled={pending} className="self-end">

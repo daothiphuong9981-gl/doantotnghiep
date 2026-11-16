@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { Alert, Button, Field, Input } from "@/components/ui/controls";
+import { PasswordInput } from "@/components/ui/password-input";
 import { registerAction, type FormState } from "../actions";
 
 export function RegisterForm() {
@@ -29,8 +30,11 @@ export function RegisterForm() {
       <Field label="Số điện thoại">
         <Input name="phone" inputMode="numeric" autoComplete="tel" placeholder="0905xxxxxx" defaultValue={v.phone} required />
       </Field>
-      <Field label="Mật khẩu" hint="Ít nhất 8 ký tự">
-        <Input name="password" type="password" autoComplete="new-password" required />
+      <Field label="Mật khẩu" hint="Từ 8 đến 72 ký tự">
+        <PasswordInput name="password" autoComplete="new-password" required minLength={8} maxLength={72} />
+      </Field>
+      <Field label="Nhập lại mật khẩu">
+        <PasswordInput name="password_confirm" autoComplete="new-password" required />
       </Field>
       <fieldset>
         <legend className="mb-1.5 text-xs font-semibold text-slate-600">Bạn là</legend>

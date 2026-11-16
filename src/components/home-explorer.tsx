@@ -58,11 +58,14 @@ function QuickChip({ active, onClick, disabled, children }: { active: boolean; o
 export function HomeExplorer({
   initialVenues,
   initialFilter = EMPTY_FILTER,
+  initialError = null,
   wards,
   today,
   currentHour,
 }: {
   initialVenues: VenueCard[];
+  /** Lỗi tải danh sách ở máy chủ: hiện ở ô thông báo thay cho câu "Chưa có sân nào được duyệt" */
+  initialError?: string | null;
   initialFilter?: SearchFilter;
   wards: Ward[];
   today: string;
@@ -73,7 +76,7 @@ export function HomeExplorer({
   const [me, setMe] = useState<[number, number] | null>(null);
   const [locating, setLocating] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(initialError);
   const [filter, setFilter] = useState(initialFilter);
   /** Bộ lọc đang áp dụng cho danh sách (khác với bộ lọc đang nhập dở). */
   const [applied, setApplied] = useState(initialFilter);

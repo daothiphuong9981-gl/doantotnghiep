@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { VenueReviewActions } from "@/components/admin/venue-review-actions";
 import { Alert, buttonClass, Chip, inputClass } from "@/components/ui/controls";
 import { PillTabs } from "@/components/ui/data";
@@ -24,7 +25,10 @@ export default async function AdminVenuesPage({ searchParams }: PageProps<"/admi
   const query = await searchParams;
   const status = ORDER.includes(query.status as VenueStatus) ? (query.status as VenueStatus) : "pending";
   const q = typeof query.q === "string" ? query.q : "";
-  const result = await listAdminVenues({ status, q });
+  const page = Number(query.page) > 0 ? Math.floor(Number(query.page)) : 1;
+  const result = await listAdminVenues({ status, q, page });
+  const pages = result.ok ? Math.max(1, Math.ceil(result.data.total / result.data.page_size)) : 1;
+  const pageHref = (n: number) => `/admin?${new URLSearchParams({ status, ...(q ? { q } : {}), page: String(n) })}`;
 
   return (
     <div className="flex flex-col gap-4">
@@ -118,6 +122,23 @@ export default async function AdminVenuesPage({ searchParams }: PageProps<"/admi
               <VenueReviewActions id={v.id} status={v.status} hasOwner={v.owner_name !== null} />
             </article>
           ))}
+          {pages > 1 ? (
+            <nav className="flex items-center gap-3 text-sm" aria-label="Phân trang">
+              {page > 1 ? (
+                <Link href={pageHref(page - 1)} className={buttonClass("outline", "h-9")}>
+                  ← Trang trước
+                </Link>
+              ) : null}
+              <span className="text-slate-500">
+                Trang {Math.min(page, pages)}/{pages}
+              </span>
+              {page < pages ? (
+                <Link href={pageHref(page + 1)} className={buttonClass("outline", "h-9")}>
+                  Trang sau →
+                </Link>
+              ) : null}
+            </nav>
+          ) : null}
         </>
       ) : null}
     </div>

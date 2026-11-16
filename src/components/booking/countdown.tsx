@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { formatCountdown } from "@/lib/format";
 
@@ -33,8 +34,12 @@ export function useCountdown(expiresAt: string, serverTime: string, onExpire?: (
   return left;
 }
 
-/** Nhãn đếm ngược gọn, dùng trong danh sách. */
-export function Countdown({ expiresAt, serverTime }: { expiresAt: string; serverTime: string }) {
-  const left = useCountdown(expiresAt, serverTime);
+/**
+ * Nhãn đếm ngược gọn, dùng trong danh sách. refreshOnExpire: hết giờ thì tải lại trang (máy chủ chuyển lượt sang
+ * "Hết hạn") để thẻ không còn ghi "Đang giữ chỗ".
+ */
+export function Countdown({ expiresAt, serverTime, refreshOnExpire = false }: { expiresAt: string; serverTime: string; refreshOnExpire?: boolean }) {
+  const router = useRouter();
+  const left = useCountdown(expiresAt, serverTime, refreshOnExpire ? () => setTimeout(() => router.refresh(), 1500) : undefined);
   return <span className="tabular-nums">{left > 0 ? `còn ${formatCountdown(left)}` : "đã hết giờ"}</span>;
 }

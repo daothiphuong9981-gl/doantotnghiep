@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { changePasswordAction, deleteAccountAction, updateProfileAction, type FormState } from "@/app/(auth)/actions";
 import { Alert, Button, Field, Input } from "@/components/ui/controls";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export function ProfileForm({ fullName, phone, email }: { fullName: string; phone: string; email: string }) {
   const [state, action, pending] = useActionState<FormState, FormData>(updateProfileAction, {});
@@ -31,10 +32,13 @@ export function PasswordForm() {
   return (
     <form action={action} className="flex flex-col gap-4" noValidate key={state.success ? "done" : "form"}>
       <Field label="Mật khẩu hiện tại">
-        <Input name="current_password" type="password" autoComplete="current-password" required />
+        <PasswordInput name="current_password" autoComplete="current-password" required />
       </Field>
-      <Field label="Mật khẩu mới" hint="Ít nhất 8 ký tự">
-        <Input name="new_password" type="password" autoComplete="new-password" required />
+      <Field label="Mật khẩu mới" hint="Từ 8 đến 72 ký tự">
+        <PasswordInput name="new_password" autoComplete="new-password" required minLength={8} maxLength={72} />
+      </Field>
+      <Field label="Nhập lại mật khẩu mới">
+        <PasswordInput name="new_password_confirm" autoComplete="new-password" required />
       </Field>
       {state.error ? <Alert>{state.error}</Alert> : null}
       {state.success ? <Alert tone="success">{state.success}</Alert> : null}
@@ -57,7 +61,7 @@ export function DeleteAccountForm({ role }: { role: string }) {
         các lượt đặt chưa diễn ra trước khi xóa.
       </p>
       <Field label="Mật khẩu hiện tại">
-        <Input name="password" type="password" autoComplete="current-password" required />
+        <PasswordInput name="password" autoComplete="current-password" required />
       </Field>
       <label className="flex items-start gap-2 text-sm">
         <input type="checkbox" name="confirm" className="mt-0.5" />

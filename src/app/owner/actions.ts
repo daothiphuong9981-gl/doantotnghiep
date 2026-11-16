@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { expireTagsInAction, venueTags } from "@/lib/cache-tags";
-import { createVenue, replacePrices, setVenueSuspended, updateVenue } from "@/lib/services/owner";
+import { createOfflineBooking } from "@/lib/services/bookings";
+import { createVenue, deleteVenue, renameCourt, replacePrices, setCourtActive, setVenueSuspended, updateVenue } from "@/lib/services/owner";
 import { createClient } from "@/lib/supabase/server";
 import type { PriceSlot } from "@/lib/types";
 import { MAX_IMAGES } from "@/lib/validation";
@@ -21,6 +22,8 @@ export async function saveVenueAction(_prev: VenueFormState, form: FormData): Pr
   const input = Object.fromEntries([...form.entries()].map(([key, value]) => [key, String(value)]));
   const id = Number(form.get("id") ?? 0);
   const result = id ? await updateVenue(id, input) : await createVenue(input);
+  // Lỗi ở bước sân con (409) xảy ra sau khi thông tin sân đã lưu: vẫn xóa lưu đệm
+  if (!result.ok && id && result.status === 409) expireTagsInAction(venueTags(id));
   if (!result.ok) return { error: result.message, errors: result.errors, values: input };
   // Sân đã có: xóa ngay dữ liệu công khai đang lưu đệm (chi tiết, danh sách) để chủ sân và khách thấy thay đổi
   if (id) expireTagsInAction(venueTags(id));
@@ -30,12 +33,58 @@ export async function saveVenueAction(_prev: VenueFormState, form: FormData): Pr
   return { success: result.data.status === "pending" ? "Đã lưu. Sân đang chờ quản trị viên duyệt." : "Đã lưu thông tin sân." };
 }
 
-/** PB07 - Tạm ngừng hoặc mở lại sân. */
-export async function toggleSuspendAction(form: FormData) {
-  await setVenueSuspended(Number(form.get("id")), form.get("suspend") === "1");
-  expireTagsInAction(venueTags(Number(form.get("id"))));
+/** PB07 - Tạm ngừng hoặc mở lại sân (nút có hỏi xác nhận ở trình duyệt). */
+export async function toggleSuspendAction(id: number, suspend: boolean): Promise<{ error?: string; success?: string }> {
+  const result = await setVenueSuspended(id, suspend);
+  if (!result.ok) return { error: result.message };
+  expireTagsInAction(venueTags(id));
   revalidatePath("/owner/venues");
   revalidatePath("/");
+  return { success: suspend ? "Đã tạm ngừng sân. Người chơi không thấy và không đặt được sân này." : "Đã mở lại sân." };
+}
+
+/** Xóa hẳn sân chưa từng có lượt đặt. */
+export async function deleteVenueAction(id: number): Promise<{ error?: string }> {
+  const result = await deleteVenue(id);
+  if (!result.ok) return { error: result.message };
+  expireTagsInAction(venueTags(id));
+  revalidatePath("/owner/venues");
+  revalidatePath("/");
+  return {};
+}
+
+/** Sân con: đổi tên. */
+export async function renameCourtAction(venueId: number, courtId: number, name: string): Promise<{ error?: string; success?: string }> {
+  const result = await renameCourt(venueId, courtId, name);
+  if (!result.ok) return { error: result.message };
+  expireTagsInAction(venueTags(venueId));
+  revalidatePath(`/owner/venues/${venueId}`);
+  return { success: "Đã đổi tên sân con." };
+}
+
+/** Sân con: ngừng hoặc mở lại một sân cụ thể. */
+export async function setCourtActiveAction(venueId: number, courtId: number, active: boolean): Promise<{ error?: string; success?: string }> {
+  const result = await setCourtActive(venueId, courtId, active);
+  if (!result.ok) return { error: result.message };
+  expireTagsInAction(venueTags(venueId));
+  revalidatePath(`/owner/venues/${venueId}`);
+  revalidatePath("/owner/venues");
+  return { success: active ? "Đã mở lại sân con." : "Đã ngừng sân con. Người chơi không đặt được sân con này nữa." };
+}
+
+/** Chủ sân đặt hộ khách vãng lai hoặc khóa khung giờ (không qua thanh toán trên web). */
+export async function createOfflineBookingAction(input: {
+  venue_id: number;
+  kind: "walk_in" | "block";
+  items: { court_id: number; booking_date: string; start_time: string }[];
+  guest_name?: string;
+  guest_phone?: string;
+}): Promise<{ error?: string; code?: string }> {
+  const result = await createOfflineBooking(input);
+  if (!result.ok) return { error: result.message };
+  expireTagsInAction(venueTags(input.venue_id));
+  revalidatePath("/owner/bookings");
+  return { code: result.data.code };
 }
 
 /** PB08 - Lưu bảng giá. */

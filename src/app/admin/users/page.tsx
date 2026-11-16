@@ -60,7 +60,11 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
               <tbody>
                 {result.data.users.map((u) => (
                   <tr key={u.id} className="border-t border-slate-100" data-email={u.email}>
-                    <td className="px-4 py-2.5 font-semibold">{u.full_name}</td>
+                    <td className="px-4 py-2.5 font-semibold">
+                      <Link href={`/admin/users/${u.id}`} className="text-brand-700 hover:underline">
+                        {u.full_name}
+                      </Link>
+                    </td>
                     <td className="px-4 py-2.5">{u.email}</td>
                     <td className="px-4 py-2.5">{u.phone}</td>
                     <td className="px-4 py-2.5">{ROLE[u.role]}</td>

@@ -101,18 +101,24 @@ export function nextHourSlot(today: string, currentHour: number) {
   return { date: today, startTime: hour, label: `Trống lúc ${hour}` };
 }
 
-export type SortKey = "relevance" | "distance" | "price" | "free";
+export type SortKey = "relevance" | "distance" | "price" | "free" | "rating";
 
 export const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "relevance", label: "Phù hợp nhất" },
   { value: "distance", label: "Gần nhất" },
   { value: "price", label: "Giá thấp nhất" },
   { value: "free", label: "Nhiều sân trống nhất" },
+  { value: "rating", label: "Đánh giá cao nhất" },
 ];
 
 /** Sắp xếp kết quả ngay trên trình duyệt; "Phù hợp nhất" giữ nguyên thứ tự máy chủ trả về. */
 export function sortVenues(venues: VenueCard[], sort: SortKey): VenueCard[] {
   if (sort === "relevance") return venues;
+  if (sort === "rating") {
+    // Điểm cao trước; cùng điểm thì nhiều lượt đánh giá hơn trước; sân chưa có đánh giá xếp cuối
+    const score = (v: VenueCard) => (v.rating_count ? (v.rating_avg ?? 0) : -1);
+    return [...venues].sort((a, b) => score(b) - score(a) || (b.rating_count ?? 0) - (a.rating_count ?? 0) || a.name.localeCompare(b.name, "vi"));
+  }
   const last = (n: number | null | undefined, desc = false) => (n === null || n === undefined ? Infinity : desc ? -n : n);
   const key = (v: VenueCard) =>
     sort === "distance" ? last(v.distance_km) : sort === "price" ? last(v.min_price) : last(v.free_courts ?? v.court_count, true);

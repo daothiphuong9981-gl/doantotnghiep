@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
+import { CourtManager } from "@/components/owner/court-manager";
 import { ImageManager } from "@/components/owner/image-manager";
 import { PriceEditor } from "@/components/owner/price-editor";
 import { VenueForm } from "@/components/owner/venue-form";
@@ -32,12 +34,22 @@ export default async function EditVenuePage({ params, searchParams }: PageProps<
         <Chip tone={tone}>{label}</Chip>
       </div>
       {created ? <Alert tone="success">Đã đăng ký sân. Hãy thiết lập bảng giá và tải ảnh bên dưới; sân sẽ hiển thị sau khi được duyệt.</Alert> : null}
-      {venue.reject_reason && (venue.status === "rejected" || venue.status === "hidden") ? (
-        <Alert>Lý do: {venue.reject_reason}. Sửa thông tin và lưu lại để gửi duyệt lần nữa.</Alert>
+      {venue.status === "rejected" ? (
+        <Alert>Sân bị từ chối{venue.reject_reason ? `. Lý do: ${venue.reject_reason}` : ""}. Sửa thông tin và lưu lại để gửi duyệt lần nữa.</Alert>
+      ) : null}
+      {venue.status === "hidden" ? (
+        <Alert>
+          Sân đang bị quản trị viên ẩn{venue.reject_reason ? `. Lý do: ${venue.reject_reason}` : ""}. Sau khi khắc phục, hãy{" "}
+          <Link href="/contact" className="font-semibold underline">
+            liên hệ quản trị viên
+          </Link>{" "}
+          để được hiển thị lại.
+        </Alert>
       ) : null}
       {wards.ok ? <VenueForm wards={wards.data} venue={venue} courtCount={courts.filter((c) => c.is_active).length} /> : <Alert>{wards.message}</Alert>}
+      <CourtManager venueId={venue.id} courts={courts} />
       <div className="grid gap-5 2xl:grid-cols-2">
-        <PriceEditor venueId={venue.id} initial={prices} />
+        <PriceEditor venueId={venue.id} initial={prices} openTime={venue.open_time} closeTime={venue.close_time} />
         <ImageManager venueId={venue.id} images={images} />
       </div>
     </div>

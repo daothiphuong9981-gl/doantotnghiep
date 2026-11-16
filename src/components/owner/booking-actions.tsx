@@ -5,17 +5,22 @@ import { useState } from "react";
 import { Alert, Button, inputClass } from "@/components/ui/controls";
 import type { BookingStatus } from "@/lib/types";
 
-/** PB16 - Nút "Đã nhận tiền" và "Chưa nhận được" (bắt buộc nhập lý do) của chủ sân. */
-export function OwnerBookingActions({ id, status }: { id: number; status: BookingStatus }) {
+/**
+ * PB16 - Nút "Đã nhận tiền" và "Chưa nhận được" (bắt buộc nhập lý do) của chủ sân.
+ * Lượt đặt hộ / khóa giờ (kind khác "online") không có người chơi: hủy là trả lại khung giờ, lý do chỉ để chủ sân ghi nhớ.
+ */
+export function OwnerBookingActions({ id, status, kind = "online" }: { id: number; status: BookingStatus; kind?: "online" | "walk_in" | "block" }) {
   const router = useRouter();
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const awaiting = status === "awaiting_confirmation";
+  const offline = kind !== "online";
 
   async function send(action: "confirm_payment" | "cancel") {
-    if (action === "cancel" && !reason.trim()) {
+    const finalReason = reason.trim() || (offline ? (kind === "block" ? "Mở lại khung giờ" : "Khách không đến") : "");
+    if (action === "cancel" && !finalReason) {
       setError("Hãy nhập lý do để người chơi biết.");
       return;
     }
@@ -25,7 +30,7 @@ export function OwnerBookingActions({ id, status }: { id: number; status: Bookin
       const res = await fetch(`/api/owner/bookings/${id}/status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, reason: reason.trim() || undefined }),
+        body: JSON.stringify({ action, reason: finalReason || undefined }),
       });
       if (!res.ok) setError((await res.json()).message ?? "Không cập nhật được.");
       else setRejecting(false);
@@ -43,18 +48,18 @@ export function OwnerBookingActions({ id, status }: { id: number; status: Bookin
       {rejecting ? (
         <div className="flex flex-wrap items-end gap-2">
           <label className="block min-w-60 flex-1">
-            <span className="mb-1.5 block text-xs font-semibold text-slate-600">Lý do hủy (người chơi sẽ thấy)</span>
+            <span className="mb-1.5 block text-xs font-semibold text-slate-600">{offline ? "Ghi chú (không bắt buộc)" : "Lý do hủy (người chơi sẽ thấy)"}</span>
             <input
               className={inputClass}
               value={reason}
               maxLength={300}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Ví dụ: chưa nhận được tiền chuyển khoản"
+              placeholder={offline ? "Ví dụ: khách báo không đến" : "Ví dụ: chưa nhận được tiền chuyển khoản"}
               autoFocus
             />
           </label>
           <Button variant="danger" onClick={() => send("cancel")} disabled={busy}>
-            {busy ? "Đang hủy..." : "Hủy lượt đặt"}
+            {busy ? "Đang hủy..." : kind === "block" ? "Mở lại khung giờ" : "Hủy lượt đặt"}
           </Button>
           <Button variant="outline" onClick={() => setRejecting(false)} disabled={busy}>
             Quay lại
@@ -63,7 +68,7 @@ export function OwnerBookingActions({ id, status }: { id: number; status: Bookin
       ) : (
         <div className="flex flex-wrap justify-end gap-2">
           <Button variant="danger" className="h-9" onClick={() => setRejecting(true)} disabled={busy}>
-            {awaiting ? "Chưa nhận được" : "Hủy lượt đặt"}
+            {awaiting ? "Chưa nhận được" : kind === "block" ? "Mở lại khung giờ" : "Hủy lượt đặt"}
           </Button>
           {awaiting ? (
             <Button className="h-9" onClick={() => send("confirm_payment")} disabled={busy}>

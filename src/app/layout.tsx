@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import { preconnect } from "react-dom";
+import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
 import { SessionProvider } from "@/components/navbar-session";
+import { siteUrl } from "@/lib/site";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl()),
   title: "Cầu Lông Đà Nẵng - Tìm và đặt sân cầu lông",
   description: "Tìm sân cầu lông trên bản đồ Đà Nẵng, xem giá theo khung giờ và đặt sân trực tuyến.",
 };
@@ -28,6 +31,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </div>
           )}
           <main className="flex flex-1 flex-col">{children}</main>
+          <Footer />
         </SessionProvider>
       </body>
     </html>

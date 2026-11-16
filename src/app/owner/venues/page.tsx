@@ -1,8 +1,8 @@
 import Link from "next/link";
+import { VenueRowActions } from "@/components/owner/venue-row-actions";
 import { Alert, buttonClass, Chip } from "@/components/ui/controls";
 import { listMyVenues } from "@/lib/services/owner";
 import type { VenueStatus } from "@/lib/types";
-import { toggleSuspendAction } from "../actions";
 
 export const metadata = { title: "Sân của tôi - Cầu Lông Đà Nẵng" };
 
@@ -61,16 +61,8 @@ export default async function OwnerVenuesPage() {
                     <Chip tone={STATUS[v.status].tone}>{STATUS[v.status].label}</Chip>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
-                      {v.status === "approved" || v.status === "suspended" ? (
-                        <form action={toggleSuspendAction}>
-                          <input type="hidden" name="id" value={v.id} />
-                          <input type="hidden" name="suspend" value={v.status === "approved" ? "1" : "0"} />
-                          <button className={buttonClass(v.status === "approved" ? "danger" : "outline", "h-8 px-3 text-xs")}>
-                            {v.status === "approved" ? "Tạm ngừng" : "Mở lại"}
-                          </button>
-                        </form>
-                      ) : null}
+                    <div className="flex items-start justify-end gap-2">
+                      <VenueRowActions id={v.id} name={v.name} status={v.status} canDelete={!v.has_bookings} />
                       <Link href={`/owner/venues/${v.id}`} className={buttonClass("outline", "h-8 px-3 text-xs")}>
                         Sửa
                       </Link>

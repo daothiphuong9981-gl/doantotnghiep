@@ -1,3 +1,4 @@
+import { dbFail } from "@/lib/db-errors";
 import { hhmm } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/lib/auth";
@@ -23,23 +24,26 @@ export interface OwnerVenueRow {
   reject_reason: string | null;
   court_count: number;
   hold_minutes: number;
+  /** Sân chưa từng có lượt đặt nào thì xóa hẳn được */
+  has_bookings: boolean;
 }
 
-/** Danh sách sân của chủ sân đang đăng nhập. */
+/** Danh sách sân của chủ sân đang đăng nhập (số sân con chỉ tính sân đang hoạt động). */
 export async function listMyVenues(): Promise<Result<OwnerVenueRow[]>> {
   const supabase = await createClient();
   const owner = await requireOwner();
   if (!owner.ok) return owner;
   const { data, error } = await supabase
     .from("venues")
-    .select("id, name, address, status, reject_reason, hold_minutes, wards(name), courts(count)")
+    .select("id, name, address, status, reject_reason, hold_minutes, wards(name), courts(is_active), bookings(count)")
     .eq("owner_id", owner.data)
     .order("created_at", { ascending: false });
   if (error) return fail(500, "Không tải được danh sách sân");
   return ok(
     (data ?? []).map((v) => {
       const wards = v.wards as { name: string } | { name: string }[] | null;
-      const courts = v.courts as { count: number }[] | null;
+      const courts = (v.courts ?? []) as { is_active: boolean }[];
+      const bookings = v.bookings as { count: number }[] | null;
       return {
         id: v.id,
         name: v.name,
@@ -48,7 +52,8 @@ export async function listMyVenues(): Promise<Result<OwnerVenueRow[]>> {
         reject_reason: v.reject_reason,
         hold_minutes: v.hold_minutes,
         ward_name: (Array.isArray(wards) ? wards[0]?.name : wards?.name) ?? "",
-        court_count: courts?.[0]?.count ?? 0,
+        court_count: courts.filter((c) => c.is_active).length,
+        has_bookings: (bookings?.[0]?.count ?? 0) > 0,
       };
     }),
   );
@@ -100,21 +105,38 @@ export async function getMyVenue(id: number): Promise<Result<OwnerVenueDetail>> 
 
 export type VenueFormResult = Result<{ id: number; status: VenueStatus }> & { errors?: Record<string, string> };
 
-/** Điều chỉnh số sân con: thêm sân mới hoặc ngừng/mở lại các sân cuối danh sách. */
+/**
+ * Điều chỉnh số sân con ĐANG HOẠT ĐỘNG theo số nhập trong form:
+ * - tăng: mở lại sân con đã ngừng (theo thứ tự tạo) rồi mới tạo sân mới, tên "Sân n" không trùng tên đã có;
+ * - giảm: ngừng các sân con đang hoạt động ở cuối danh sách. Sân con còn khung giờ đã đặt sắp tới bị trigger
+ *   courts_guard_deactivate (0015) chặn, thông báo nêu rõ sân nào, lượt gần nhất lúc nào.
+ * Muốn ngừng một sân con cụ thể thì dùng mục "Sân con" (setCourtActive).
+ */
 async function syncCourts(supabase: Supabase, venueId: number, target: number): Promise<string | null> {
   const { data: courts, error } = await supabase.from("courts").select("id, name, is_active").eq("venue_id", venueId).order("id");
   if (error) return "Không cập nhật được sân con";
-  const existing = courts ?? [];
-  for (let i = 0; i < existing.length; i += 1) {
-    const shouldBeActive = i < target;
-    if (existing[i].is_active !== shouldBeActive) {
-      const res = await supabase.from("courts").update({ is_active: shouldBeActive }).eq("id", existing[i].id);
-      if (res.error) return "Không cập nhật được sân con";
+  const all = courts ?? [];
+  const active = all.filter((c) => c.is_active);
+  if (target < active.length) {
+    for (const court of active.slice(target).reverse()) {
+      const res = await supabase.from("courts").update({ is_active: false }).eq("id", court.id);
+      if (res.error) return res.error.message === "INVALID_STATE" && res.error.details ? res.error.details : "Không cập nhật được sân con";
     }
+    return null;
   }
-  if (target > existing.length) {
-    const rows = [];
-    for (let n = existing.length + 1; n <= target; n += 1) rows.push({ venue_id: venueId, name: `Sân ${n}` });
+  let missing = target - active.length;
+  for (const court of all.filter((c) => !c.is_active)) {
+    if (missing === 0) break;
+    const res = await supabase.from("courts").update({ is_active: true }).eq("id", court.id);
+    if (res.error) return "Không cập nhật được sân con";
+    missing -= 1;
+  }
+  if (missing > 0) {
+    const names = new Set(all.map((c) => c.name));
+    const rows: { venue_id: number; name: string }[] = [];
+    for (let n = 1; rows.length < missing; n += 1) {
+      if (!names.has(`Sân ${n}`)) rows.push({ venue_id: venueId, name: `Sân ${n}` });
+    }
     const res = await supabase.from("courts").insert(rows);
     if (res.error) return "Không tạo được sân con";
   }
@@ -171,7 +193,7 @@ export async function updateVenue(id: number, input: unknown): Promise<VenueForm
   if (error || !data) return fail(400, "Không lưu được sân. Vui lòng thử lại.");
 
   const courtError = await syncCourts(supabase, id, court_count);
-  if (courtError) return fail(500, courtError);
+  if (courtError) return { ...fail(409, `Đã lưu thông tin sân, nhưng chưa đổi được số sân con: ${courtError}`), errors: { court_count: courtError } };
   return ok({ id: data.id, status: data.status });
 }
 
@@ -188,7 +210,7 @@ export async function setVenueSuspended(id: number, suspended: boolean): Promise
     .eq("status", suspended ? "approved" : "suspended")
     .select("status")
     .maybeSingle();
-  if (error || !data) return fail(409, "Không đổi được trạng thái sân");
+  if (error || !data) return fail(409, suspended ? "Không tạm ngừng được: sân không còn ở trạng thái đang hiển thị." : "Không mở lại được: sân không còn ở trạng thái tạm ngừng.");
   return ok({ status: data.status });
 }
 
@@ -211,4 +233,50 @@ export async function replacePrices(venueId: number, input: unknown): Promise<Re
   return ok(
     ((data ?? []) as PriceSlot[]).map((p) => ({ id: p.id, day_type: p.day_type, price: p.price, start_time: hhmm(p.start_time), end_time: hhmm(p.end_time) })),
   );
+}
+
+/** Sân con: đổi tên. Tên không trùng với sân con khác của cùng cơ sở. */
+export async function renameCourt(venueId: number, courtId: number, name: string): Promise<Result<null>> {
+  const clean = name.trim().replace(/\s+/g, " ");
+  if (!clean) return fail(400, "Hãy nhập tên sân con");
+  if (clean.length > 40) return fail(400, "Tên sân con tối đa 40 ký tự");
+  const supabase = await createClient();
+  const owner = await requireOwner();
+  if (!owner.ok) return owner;
+  const { data, error } = await supabase.from("courts").update({ name: clean }).eq("id", courtId).eq("venue_id", venueId).select("id").maybeSingle();
+  if (error?.code === "23505") return fail(409, `Đã có sân con tên “${clean}”`);
+  if (error || !data) return fail(403, "Không đổi được tên sân con");
+  return ok(null);
+}
+
+/** Sân con: ngừng hoặc mở lại một sân cụ thể (ví dụ đang sửa mặt sân). Còn lượt đặt sắp tới thì không ngừng được. */
+export async function setCourtActive(venueId: number, courtId: number, active: boolean): Promise<Result<null>> {
+  const supabase = await createClient();
+  const owner = await requireOwner();
+  if (!owner.ok) return owner;
+  if (!active) {
+    const { count } = await supabase.from("courts").select("id", { count: "exact", head: true }).eq("venue_id", venueId).eq("is_active", true);
+    if ((count ?? 0) <= 1) return fail(409, "Sân cần ít nhất 1 sân con đang hoạt động. Muốn nghỉ cả sân, hãy dùng nút Tạm ngừng.");
+  }
+  const { data, error } = await supabase.from("courts").update({ is_active: active }).eq("id", courtId).eq("venue_id", venueId).select("id").maybeSingle();
+  if (error) return dbFail(error, "Không cập nhật được sân con");
+  if (!data) return fail(403, "Không cập nhật được sân con");
+  return ok(null);
+}
+
+/**
+ * Xóa hẳn một sân chưa từng có lượt đặt (đăng nhầm, trùng). Hàm owner_delete_venue (0016) kiểm tra quyền và lượt đặt;
+ * ảnh trên Storage xóa sau khi xóa dòng (lỗi xóa ảnh không làm hỏng thao tác).
+ */
+export async function deleteVenue(venueId: number): Promise<Result<null>> {
+  if (!Number.isInteger(venueId) || venueId <= 0) return fail(404, "Không tìm thấy sân");
+  const supabase = await createClient();
+  const owner = await requireOwner();
+  if (!owner.ok) return owner;
+  const { data: images } = await supabase.from("venue_images").select("storage_path").eq("venue_id", venueId);
+  const { error } = await supabase.rpc("owner_delete_venue", { p_venue_id: venueId });
+  if (error) return dbFail(error, "Không xóa được sân");
+  const paths = (images ?? []).map((i) => i.storage_path);
+  if (paths.length) await supabase.storage.from("venue-images").remove(paths);
+  return ok(null);
 }

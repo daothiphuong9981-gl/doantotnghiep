@@ -3,9 +3,12 @@ import { notFound, redirect } from "next/navigation";
 import { PaymentPanel } from "@/components/booking/payment-panel";
 import { BookingItems, StatusChip } from "@/components/booking/status";
 import { ReviewForm } from "@/components/reviews/review-form";
+import { buttonClass } from "@/components/ui/controls";
 import { formatDateTime, formatVnd } from "@/lib/format";
 import { getBooking } from "@/lib/services/bookings";
 import { getMyBookingReview } from "@/lib/services/reviews";
+import { getVenueDetail } from "@/lib/services/venues";
+import { directionsUrl } from "@/lib/venue-filter";
 
 export const metadata = { title: "Thanh toán lượt đặt - Cầu Lông Đà Nẵng" };
 
@@ -19,6 +22,9 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
     notFound();
   }
   const { booking, payment, server_time } = result.data;
+  // Số điện thoại và vị trí sân (chi tiết sân công khai, đã lưu đệm); sân tạm ngừng/bị ẩn thì không có
+  const venue = await getVenueDetail(booking.venue_id);
+  const contact = venue.ok ? venue.data.venue : null;
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-6 lg:flex-row">
@@ -36,6 +42,18 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
           · {booking.venue_address}
         </p>
         <p className="mt-1 text-xs text-slate-500">Tạo lúc {formatDateTime(booking.created_at)}</p>
+        {contact ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {contact.contact_phone ? (
+              <a href={`tel:${contact.contact_phone.replace(/\s/g, "")}`} className={buttonClass("outline", "h-9")}>
+                Gọi sân: {contact.contact_phone}
+              </a>
+            ) : null}
+            <a href={directionsUrl(contact.latitude, contact.longitude)} target="_blank" rel="noopener noreferrer" className={buttonClass("outline", "h-9")}>
+              Chỉ đường
+            </a>
+          </div>
+        ) : null}
 
         <h2 className="mb-1 mt-5 text-sm font-bold">Sân con và khung giờ</h2>
         <BookingItems items={booking.items} />

@@ -17,6 +17,27 @@ interface Picked {
 
 const keyOf = (courtId: number, date: string, time: string) => `${courtId}|${date}|${time}`;
 
+/** Khách chọn khung giờ rồi bấm giữ chỗ: lưu lựa chọn trong tab này để sau khi đăng nhập quay lại vẫn còn (30 phút). */
+const savedKey = (venueId: number) => `slot-picker:${venueId}`;
+function saveSelection(venueId: number, items: Picked[]) {
+  try {
+    sessionStorage.setItem(savedKey(venueId), JSON.stringify({ at: Date.now(), items }));
+  } catch {
+    // Trình duyệt chặn lưu trữ: bỏ qua, người dùng chọn lại
+  }
+}
+function takeSelection(venueId: number): Picked[] {
+  try {
+    const raw = sessionStorage.getItem(savedKey(venueId));
+    sessionStorage.removeItem(savedKey(venueId));
+    if (!raw) return [];
+    const saved = JSON.parse(raw) as { at: number; items: Picked[] };
+    return Date.now() - saved.at < 30 * 60_000 && Array.isArray(saved.items) ? saved.items.slice(0, 50) : [];
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Chạy fn ngay, và chạy lại một lần khi phần tử thật sự có kích thước (lúc trang còn đang tải,
  * nội dung có thể nằm ẩn nên mọi phép đo vị trí đều bằng 0). Trả về hàm dọn dẹp cho useEffect.
@@ -71,6 +92,14 @@ export function SlotPicker({
   const [picked, setPicked] = useState<Picked[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Vừa đăng nhập quay lại: khôi phục các ô đã chọn lúc còn là khách (ô nào đã bị người khác giữ sẽ tự bị bỏ ở dưới)
+  useEffect(() => {
+    if (role !== "player") return;
+    const restored = takeSelection(venueId);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- đọc sessionStorage chỉ làm được sau khi hydrate
+    if (restored.length > 0) setPicked(restored);
+  }, [role, venueId]);
 
   const focusRef = useRef<HTMLTableCellElement>(null);
   useEffect(() => {
@@ -131,6 +160,7 @@ export function SlotPicker({
 
   async function hold() {
     if (!role) {
+      saveSelection(venueId, selection);
       router.push(`/login?next=${encodeURIComponent(`/venues/${venueId}?date=${date}`)}`);
       return;
     }
@@ -151,6 +181,7 @@ export function SlotPicker({
         return;
       }
       if (res.status === 401) {
+        saveSelection(venueId, selection);
         router.push(`/login?next=${encodeURIComponent(`/venues/${venueId}?date=${date}`)}`);
         return;
       }

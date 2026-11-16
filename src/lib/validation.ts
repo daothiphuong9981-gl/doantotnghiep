@@ -3,6 +3,7 @@ import { bankByBin } from "./banks";
 import { BOOKING_RULES } from "./constants";
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+const HOUR = /^([01]\d|2[0-3]):00$/;
 /** Số lấy từ form: chuỗi rỗng coi như chưa nhập (không tự đổi thành 0). */
 const num = (message: string) =>
   z.preprocess((value) => (typeof value === "string" && value.trim() === "" ? undefined : value), z.coerce.number({ error: message }));
@@ -19,17 +20,33 @@ const rule = (key: keyof typeof BOOKING_RULES, label: string) => {
   );
 };
 
-export const registerSchema = z.object({
-  full_name: text("Họ và tên", 100),
-  email: z.string().trim().toLowerCase().pipe(z.email("Email không hợp lệ")),
-  phone: z.string().trim().regex(/^0\d{9}$/, "Số điện thoại gồm 10 chữ số, bắt đầu bằng 0"),
-  password: z.string().min(8, "Mật khẩu cần ít nhất 8 ký tự"),
-  role: z.enum(["player", "owner"], { error: "Hãy chọn vai trò" }),
-  consent: z.literal(true, { error: "Bạn cần đồng ý với thông báo xử lý dữ liệu cá nhân" }),
-});
+/** Mật khẩu mới: 8–72 ký tự (bcrypt của Supabase Auth chỉ dùng 72 byte đầu). */
+export const newPassword = (label = "Mật khẩu") =>
+  z.string({ error: `Hãy nhập ${label.toLowerCase()}` }).min(8, `${label} cần ít nhất 8 ký tự`).max(72, `${label} tối đa 72 ký tự`);
+const SAME_PASSWORD = "Mật khẩu nhập lại không khớp";
+const emailField = z.string().trim().toLowerCase().pipe(z.email("Email không hợp lệ"));
+
+export const registerSchema = z
+  .object({
+    full_name: text("Họ và tên", 100),
+    email: emailField,
+    phone: z.string().trim().regex(/^0\d{9}$/, "Số điện thoại gồm 10 chữ số, bắt đầu bằng 0"),
+    password: newPassword(),
+    // Form web gửi kèm ô nhập lại; API JSON cũ không gửi thì bỏ qua
+    password_confirm: z.string().optional(),
+    role: z.enum(["player", "owner"], { error: "Hãy chọn vai trò" }),
+    consent: z.literal(true, { error: "Bạn cần đồng ý với thông báo xử lý dữ liệu cá nhân" }),
+  })
+  .refine((v) => v.password_confirm === undefined || v.password_confirm === v.password, { path: ["password_confirm"], message: SAME_PASSWORD });
+
+export const forgotPasswordSchema = z.object({ email: emailField });
+
+export const resetPasswordSchema = z
+  .object({ password: newPassword("Mật khẩu mới"), password_confirm: z.string() })
+  .refine((v) => v.password_confirm === v.password, { path: ["password_confirm"], message: SAME_PASSWORD });
 
 export const loginSchema = z.object({
-  email: z.string().trim().toLowerCase().pipe(z.email("Email không hợp lệ")),
+  email: emailField,
   password: z.string().min(1, "Hãy nhập mật khẩu"),
 });
 
@@ -38,10 +55,16 @@ export const profileSchema = z.object({
   phone: z.string().trim().regex(/^0\d{9}$/, "Số điện thoại gồm 10 chữ số, bắt đầu bằng 0"),
 });
 
-export const passwordSchema = z.object({
-  current_password: z.string().min(1, "Hãy nhập mật khẩu hiện tại"),
-  new_password: z.string().min(8, "Mật khẩu mới cần ít nhất 8 ký tự"),
-});
+export const passwordSchema = z
+  .object({
+    current_password: z.string().min(1, "Hãy nhập mật khẩu hiện tại"),
+    new_password: newPassword("Mật khẩu mới"),
+    new_password_confirm: z.string().optional(),
+  })
+  .refine((v) => v.new_password_confirm === undefined || v.new_password_confirm === v.new_password, {
+    path: ["new_password_confirm"],
+    message: SAME_PASSWORD,
+  });
 
 export const venueSchema = z
   .object({
@@ -87,8 +110,9 @@ export type VenueInput = z.infer<typeof venueSchema>;
 export const priceSlotSchema = z
   .object({
     day_type: z.enum(["weekday", "weekend"]),
-    start_time: z.string().regex(TIME, "Giờ bắt đầu không hợp lệ"),
-    end_time: z.string().regex(TIME, "Giờ kết thúc không hợp lệ"),
+    // Đặt sân theo từng giờ chẵn nên khung giá cũng bắt đầu, kết thúc đúng giờ (05:00, không 05:30)
+    start_time: z.string().regex(HOUR, "Giờ bắt đầu phải là giờ chẵn, ví dụ 05:00"),
+    end_time: z.string().regex(HOUR, "Giờ kết thúc phải là giờ chẵn, ví dụ 22:00"),
     price: num("Giá không hợp lệ").pipe(z.number().int("Giá phải là số nguyên").min(0, "Giá không được âm").max(10_000_000)),
   })
   .refine((v) => v.end_time > v.start_time, { message: "Giờ kết thúc phải sau giờ bắt đầu" });

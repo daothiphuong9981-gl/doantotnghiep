@@ -26,13 +26,14 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
           <Alert tone="success">Tài khoản của bạn đã được xóa. Cảm ơn bạn đã sử dụng Cầu Lông Đà Nẵng.</Alert>
         </div>
       ) : null}
-      {result && !result.ok ? (
-        <div className="p-4">
-          <Alert>{result.message}</Alert>
+      {query.confirmed === "1" ? (
+        <div className="p-4 pb-0">
+          <Alert tone="success">Đã xác nhận email. Tài khoản của bạn đã sẵn sàng.</Alert>
         </div>
       ) : null}
       <HomeExplorer
         initialVenues={result?.ok ? result.data : []}
+        initialError={result && !result.ok ? result.message : null}
         initialFilter={search?.filter ?? EMPTY_FILTER}
         wards={wards?.ok ? wards.data : []}
         today={todayInVietnam()}

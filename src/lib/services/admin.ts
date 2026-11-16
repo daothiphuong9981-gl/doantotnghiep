@@ -13,13 +13,6 @@ async function requireAdmin(): Promise<Result<string>> {
   return ok(session.userId);
 }
 
-const unaccent = (text: string) =>
-  text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d");
-
 export interface AdminVenue {
   id: number;
   name: string;
@@ -45,34 +38,47 @@ export interface AdminVenue {
 export interface AdminVenueList {
   counts: Record<VenueStatus, number>;
   venues: AdminVenue[];
+  total: number;
+  page: number;
+  page_size: number;
 }
+export const ADMIN_VENUES_PAGE_SIZE = 20;
 
 const VENUE_STATUSES: VenueStatus[] = ["pending", "approved", "rejected", "suspended", "hidden"];
 const one = <T,>(value: T | T[] | null): T | null => (Array.isArray(value) ? (value[0] ?? null) : value);
 
-/** PB19, PB20 - Danh sách sân theo trạng thái, kèm thông tin chủ sân để quản trị viên xem xét. */
-export async function listAdminVenues(params: { status?: string; q?: string }): Promise<Result<AdminVenueList>> {
+/**
+ * PB19, PB20 - Danh sách sân theo trạng thái, kèm thông tin chủ sân để quản trị viên xem xét.
+ * Đếm, lọc, tìm (không dấu) và phân trang trong SQL (admin_venue_page, 0015); chỉ đọc chi tiết các sân của trang hiện tại.
+ */
+export async function listAdminVenues(params: { status?: string; q?: string; page?: number }): Promise<Result<AdminVenueList>> {
   const supabase = await createClient();
   const admin = await requireAdmin();
   if (!admin.ok) return admin;
   if (params.status && !VENUE_STATUSES.includes(params.status as VenueStatus)) return fail(400, "Trạng thái không hợp lệ");
+  const page = Number.isInteger(params.page) && (params.page as number) > 0 ? (params.page as number) : 1;
+
+  const { data: pageData, error: pageError } = await supabase.rpc("admin_venue_page", {
+    p_status: params.status || null,
+    p_q: params.q?.trim().slice(0, 100) || null,
+    p_limit: ADMIN_VENUES_PAGE_SIZE,
+    p_offset: (page - 1) * ADMIN_VENUES_PAGE_SIZE,
+  });
+  if (pageError) return dbFail(pageError, "Không tải được danh sách sân");
+  const { counts, total, ids } = pageData as { counts: Record<VenueStatus, number>; total: number; ids: number[] };
+  if (ids.length === 0) return ok({ counts, venues: [], total: Number(total), page, page_size: ADMIN_VENUES_PAGE_SIZE });
 
   const { data, error } = await supabase
     .from("venues")
     .select(
       "id, name, address, description, contact_phone, latitude, longitude, open_time, close_time, hold_minutes, status, reject_reason, created_at, approved_at, wards(name), owner:profiles(full_name, phone), courts(id, is_active), price_slots(day_type, start_time, end_time, price), venue_images(storage_path, sort_order)",
     )
+    .in("id", ids)
     .order("created_at", { ascending: false })
-    .limit(500);
+    .order("id", { ascending: false });
   if (error) return fail(500, "Không tải được danh sách sân");
 
-  const counts = { pending: 0, approved: 0, rejected: 0, suspended: 0, hidden: 0 } as Record<VenueStatus, number>;
-  for (const v of data ?? []) counts[v.status as VenueStatus] += 1;
-  const keyword = params.q?.trim() ? unaccent(params.q.trim()) : null;
-
   const venues = (data ?? [])
-    .filter((v) => !params.status || v.status === params.status)
-    .filter((v) => !keyword || unaccent(`${v.name} ${v.address}`).includes(keyword))
     .map((v): AdminVenue => {
       const owner = one(v.owner as { full_name: string; phone: string } | { full_name: string; phone: string }[] | null);
       const ward = one(v.wards as { name: string } | { name: string }[] | null);
@@ -103,7 +109,7 @@ export async function listAdminVenues(params: { status?: string; q?: string }): 
         images: [...images].sort((a, b) => a.sort_order - b.sort_order).map((i) => i.storage_path),
       };
     });
-  return ok({ counts, venues });
+  return ok({ counts, venues, total: Number(total), page, page_size: ADMIN_VENUES_PAGE_SIZE });
 }
 
 export interface ReviewedVenue {
@@ -165,15 +171,18 @@ export async function listUsers(params: { q?: string; role?: string; page?: numb
   });
 }
 
-/** PB20 - Khóa hoặc mở khóa một tài khoản (không áp dụng cho quản trị viên). */
+/** PB20 - Khóa (bắt buộc lý do) hoặc mở khóa một tài khoản (không áp dụng cho quản trị viên). */
 export async function setUserLock(id: string, input: unknown): Promise<Result<{ user: Pick<AdminUser, "id" | "full_name" | "role" | "is_locked"> }>> {
   const locked = (input as { is_locked?: unknown })?.is_locked;
+  const rawReason = (input as { reason?: unknown })?.reason;
+  const reason = typeof rawReason === "string" ? rawReason.trim().slice(0, 300) : "";
   if (typeof locked !== "boolean") return fail(400, "Thiếu trường is_locked");
+  if (locked && !reason) return fail(400, "Hãy nhập lý do khóa tài khoản");
   if (!/^[0-9a-f-]{36}$/i.test(id)) return fail(404, "Không tìm thấy người dùng");
   const supabase = await createClient();
   const admin = await requireAdmin();
   if (!admin.ok) return admin;
-  const { data, error } = await supabase.rpc("admin_set_user_lock", { p_user_id: id, p_locked: locked });
+  const { data, error } = await supabase.rpc("admin_set_user_lock", { p_user_id: id, p_locked: locked, p_reason: reason || null });
   if (error) return dbFail(error, "Không cập nhật được tài khoản");
   return ok({ user: data as Pick<AdminUser, "id" | "full_name" | "role" | "is_locked"> });
 }
@@ -195,4 +204,72 @@ export async function getAdminStats(): Promise<Result<AdminStats>> {
   const { data, error } = await supabase.rpc("admin_stats");
   if (error) return dbFail(error, "Không tải được thống kê");
   return ok(data as AdminStats);
+}
+
+export interface AdminLog {
+  id: number;
+  action: string;
+  target_type: "venue" | "user" | "review";
+  target_id: string;
+  target_label: string | null;
+  detail: string | null;
+  created_at: string;
+  admin_name: string | null;
+}
+
+/** Nhật ký thao tác của quản trị viên (0016), mới nhất trước, lọc theo loại đối tượng. */
+export async function listAdminLogs(params: { type?: string; page?: number }): Promise<Result<{ logs: AdminLog[]; total: number; page: number; page_size: number }>> {
+  const supabase = await createClient();
+  const admin = await requireAdmin();
+  if (!admin.ok) return admin;
+  if (params.type && !["venue", "user", "review"].includes(params.type)) return fail(400, "Loại không hợp lệ");
+  const page = Number.isInteger(params.page) && (params.page as number) > 0 ? (params.page as number) : 1;
+  const size = 30;
+  let query = supabase
+    .from("admin_logs")
+    .select("id, action, target_type, target_id, target_label, detail, created_at, admin:profiles(full_name)", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .range((page - 1) * size, page * size - 1);
+  if (params.type) query = query.eq("target_type", params.type);
+  const { data, error, count } = await query;
+  if (error) return fail(500, "Không tải được nhật ký");
+  return ok({
+    total: count ?? 0,
+    page,
+    page_size: size,
+    logs: (data ?? []).map((row) => {
+      const a = one(row.admin as { full_name: string } | { full_name: string }[] | null);
+      return { ...(row as unknown as Omit<AdminLog, "admin_name">), admin_name: a?.full_name ?? null };
+    }),
+  });
+}
+
+export interface AdminUserDetail {
+  id: string;
+  full_name: string;
+  phone: string;
+  role: Role;
+  email: string | null;
+  is_locked: boolean;
+  lock_reason: string | null;
+  locked_at: string | null;
+  created_at: string;
+  last_sign_in_at: string | null;
+  booking_counts: Record<string, number>;
+  recent_bookings: { id: number; code: string; status: string; total_amount: number; created_at: string; venue_name: string; first_date: string | null }[];
+  venues: { id: number; name: string; status: VenueStatus; bookings: number }[];
+  reviews: number;
+  logs: { action: string; detail: string | null; created_at: string; admin_name: string | null }[];
+}
+
+/** Chi tiết một người dùng: hồ sơ, lượt đặt gần đây, sân sở hữu, lịch sử khóa (admin_user_detail, 0016). */
+export async function getAdminUser(id: string): Promise<Result<AdminUserDetail>> {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return fail(404, "Không tìm thấy người dùng");
+  const supabase = await createClient();
+  const admin = await requireAdmin();
+  if (!admin.ok) return admin;
+  const { data, error } = await supabase.rpc("admin_user_detail", { p_user_id: id });
+  if (error) return dbFail(error, "Không tải được người dùng");
+  return ok(data as AdminUserDetail);
 }

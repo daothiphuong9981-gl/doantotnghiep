@@ -201,49 +201,64 @@ export async function cancelMyBooking(id: number): Promise<Result<{ booking: Boo
 
 // ------------------------------------------------------------------ Chủ sân
 
+export type BookingKind = "online" | "walk_in" | "block";
 export interface OwnerBooking extends Booking {
   player_name: string;
   player_phone: string;
+  /** online: người chơi đặt trên web; walk_in: chủ sân đặt hộ khách; block: chủ sân khóa khung giờ (bảo trì, việc riêng) */
+  kind: BookingKind;
 }
 export interface OwnerBookingList {
   summary: { holding: number; awaiting_confirmation: number; confirmed: number; closed: number };
   bookings: OwnerBooking[];
   venues: { id: number; name: string }[];
+  total: number;
+  page: number;
+  page_size: number;
 }
 
-const STATUSES: BookingStatus[] = ["holding", "awaiting_confirmation", "confirmed", "cancelled", "expired"];
+export const OWNER_BOOKINGS_PAGE_SIZE = 30;
+const OWNER_STATUSES = ["holding", "awaiting_confirmation", "confirmed", "closed"];
+const OWNER_COLUMNS = `${COLUMNS}, kind, guest_name, guest_phone`;
 
-/** PB16 - Lịch đặt các sân của chủ sân đang đăng nhập, kèm tên và số điện thoại người đặt. */
-export async function listOwnerBookings(params: { venueId?: number; date?: string; status?: string }): Promise<Result<OwnerBookingList>> {
+/**
+ * PB16 - Lịch đặt các sân của chủ sân đang đăng nhập, kèm tên và số điện thoại người đặt.
+ * Lọc sân/ngày/trạng thái/từ khóa và phân trang trong SQL (owner_bookings_page, 0015); status "cancelled"/"expired"
+ * (link trong thông báo cũ) được hiểu là tab "closed".
+ */
+export async function listOwnerBookings(params: { venueId?: number; date?: string; status?: string; q?: string; page?: number }): Promise<Result<OwnerBookingList>> {
   const supabase = await createClient();
   const user = await currentUser();
   if (!user) return fail(401, "Bạn cần đăng nhập");
   if (user.role !== "owner") return fail(403, "Chức năng chỉ dành cho chủ sân");
-  if (params.status && !STATUSES.includes(params.status as BookingStatus)) return fail(400, "Trạng thái không hợp lệ");
+  const status = params.status === "cancelled" || params.status === "expired" ? "closed" : params.status;
+  if (status && !OWNER_STATUSES.includes(status)) return fail(400, "Trạng thái không hợp lệ");
   if (params.date && !/^\d{4}-\d{2}-\d{2}$/.test(params.date)) return fail(400, "Ngày không hợp lệ");
+  if (params.venueId !== undefined && !(Number.isInteger(params.venueId) && params.venueId > 0)) return fail(400, "Sân không hợp lệ");
+  const page = Number.isInteger(params.page) && (params.page as number) > 0 ? (params.page as number) : 1;
 
-  // Hai việc độc lập: chạy song song
+  // Trả các lượt giữ chỗ quá hạn trước khi đếm; danh sách sân để hiện ô chọn sân
   const [, { data: venues }] = await Promise.all([
     supabase.rpc("expire_holds"),
     supabase.from("venues").select("id, name").eq("owner_id", user.id).order("name"),
   ]);
-  const venueIds = (venues ?? []).map((v) => v.id);
-  if (params.venueId !== undefined && !venueIds.includes(params.venueId)) return fail(403, "Đây không phải sân của bạn");
-  const scope = params.venueId !== undefined ? [params.venueId] : venueIds;
-  const empty = { holding: 0, awaiting_confirmation: 0, confirmed: 0, closed: 0 };
-  if (scope.length === 0) return ok({ summary: empty, bookings: [], venues: venues ?? [] });
+  const { data: pageData, error } = await supabase.rpc("owner_bookings_page", {
+    p_venue_id: params.venueId ?? null,
+    p_date: params.date ?? null,
+    p_status: status || null,
+    p_q: params.q?.trim().slice(0, 100) || null,
+    p_limit: OWNER_BOOKINGS_PAGE_SIZE,
+    p_offset: (page - 1) * OWNER_BOOKINGS_PAGE_SIZE,
+  });
+  if (error) return dbFail(error, "Không tải được lịch đặt");
+  const result = pageData as { summary: OwnerBookingList["summary"]; total: number; ids: number[] };
+  const base = { summary: result.summary, venues: venues ?? [], total: Number(result.total), page, page_size: OWNER_BOOKINGS_PAGE_SIZE };
+  if (result.ids.length === 0) return ok({ ...base, bookings: [] });
 
-  const { data, error } = await supabase.from("booking_details").select(COLUMNS).in("venue_id", scope).order("created_at", { ascending: false }).limit(300);
-  if (error) return fail(500, "Không tải được lịch đặt");
-  let rows = data ?? [];
-  if (params.date) rows = rows.filter((r) => (r.items as BookingItem[]).some((i) => i.booking_date === params.date));
-
-  const summary = { ...empty };
-  for (const r of rows) {
-    if (r.status === "cancelled" || r.status === "expired") summary.closed += 1;
-    else summary[r.status as "holding" | "awaiting_confirmation" | "confirmed"] += 1;
-  }
-  if (params.status) rows = rows.filter((r) => r.status === params.status);
+  const { data, error: rowsError } = await supabase.from("booking_details").select(OWNER_COLUMNS).in("id", result.ids);
+  if (rowsError) return fail(500, "Không tải được lịch đặt");
+  const order = new Map(result.ids.map((id, i) => [Number(id), i]));
+  const rows = ((data ?? []) as unknown as Record<string, unknown>[]).sort((a, b) => (order.get(Number(a.id)) ?? 0) - (order.get(Number(b.id)) ?? 0));
 
   const playerIds = [...new Set(rows.map((r) => r.player_id).filter(Boolean))] as string[];
   const { data: players } = playerIds.length
@@ -252,15 +267,61 @@ export async function listOwnerBookings(params: { venueId?: number; date?: strin
   const byId = new Map((players ?? []).map((p) => [p.id, p]));
 
   return ok({
-    summary,
-    venues: venues ?? [],
-    bookings: rows.map((r) => ({
-      ...toBooking(r),
-      // Lượt giữ chỗ đã hết hạn không kèm thông tin khách (0009_security.sql); không tìm thấy hồ sơ ở lượt khác là tài khoản đã xóa
-      player_name: byId.get(r.player_id as string)?.full_name ?? (r.status === "expired" && r.player_id ? "Khách (giữ chỗ hết hạn)" : "Tài khoản đã xóa"),
-      player_phone: byId.get(r.player_id as string)?.phone ?? "",
-    })),
+    ...base,
+    bookings: rows.map((r) => {
+      const kind = ((r.kind as string) ?? "online") as BookingKind;
+      const player = byId.get(r.player_id as string);
+      const fallback = r.status === "expired" && r.player_id ? "Khách (giữ chỗ hết hạn)" : "Tài khoản đã xóa";
+      return {
+        ...toBooking(r),
+        kind,
+        // Lượt giữ chỗ đã hết hạn không kèm thông tin khách (0009_security.sql); không tìm thấy hồ sơ ở lượt khác là tài khoản đã xóa
+        player_name: kind === "walk_in" ? `${(r.guest_name as string) || "Khách vãng lai"} (đặt hộ)` : kind === "block" ? `Khóa khung giờ${r.guest_name ? `: ${r.guest_name}` : ""}` : (player?.full_name ?? fallback),
+        player_phone: kind === "online" ? (player?.phone ?? "") : ((r.guest_phone as string) ?? ""),
+      };
+    }),
   });
+}
+
+/**
+ * Chủ sân đặt hộ khách vãng lai (walk_in) hoặc khóa khung giờ (block) - hàm owner_create_offline_booking (0016).
+ * Lượt xác nhận ngay, không có người chơi, không gửi thông báo/email. Trùng khung giờ thì báo như khi người chơi đặt.
+ */
+export async function createOfflineBooking(input: unknown): Promise<BookingResult<{ id: number; code: string }>> {
+  const body = (input ?? {}) as { venue_id?: unknown; kind?: unknown; items?: unknown; guest_name?: unknown; guest_phone?: unknown };
+  if (body.kind !== "walk_in" && body.kind !== "block") return fail(400, "Loại lượt đặt không hợp lệ");
+  const venueId = Number(body.venue_id);
+  if (!Number.isInteger(venueId) || venueId <= 0) return fail(400, "Hãy chọn sân");
+  const items = Array.isArray(body.items) ? body.items : [];
+  if (items.length === 0) return fail(400, "Hãy chọn ít nhất một khung giờ");
+  if (items.length > 48) return fail(400, "Mỗi lần tối đa 48 khung giờ");
+  const clean = items.map((i) => ({
+    court_id: Number((i as Record<string, unknown>)?.court_id),
+    booking_date: String((i as Record<string, unknown>)?.booking_date ?? ""),
+    start_time: String((i as Record<string, unknown>)?.start_time ?? ""),
+  }));
+  if (clean.some((i) => !Number.isInteger(i.court_id) || !/^\d{4}-\d{2}-\d{2}$/.test(i.booking_date) || !/^([01]\d|2[0-3]):00$/.test(i.start_time))) {
+    return fail(400, "Dữ liệu khung giờ không hợp lệ");
+  }
+  const guestName = typeof body.guest_name === "string" ? body.guest_name.trim().slice(0, 80) : "";
+  const guestPhone = typeof body.guest_phone === "string" ? body.guest_phone.replace(/\s/g, "") : "";
+  if (body.kind === "walk_in" && guestName.length < 2) return fail(400, "Hãy nhập tên khách");
+  if (guestPhone && !/^0\d{9}$/.test(guestPhone)) return fail(400, "Số điện thoại gồm 10 chữ số, bắt đầu bằng 0");
+
+  const supabase = await createClient();
+  const user = await currentUser();
+  if (!user) return fail(401, "Bạn cần đăng nhập");
+  if (user.role !== "owner") return fail(403, "Chức năng chỉ dành cho chủ sân");
+  const { data, error } = await supabase.rpc("owner_create_offline_booking", {
+    p_venue_id: venueId,
+    p_kind: body.kind,
+    p_items: clean,
+    p_guest_name: guestName || null,
+    p_guest_phone: guestPhone || null,
+  });
+  if (error) return fromDbError(error, "Không tạo được lượt đặt");
+  const row = data as { id: number; code: string };
+  return ok({ id: Number(row.id), code: String(row.code) });
 }
 
 /** PB16 - Chủ sân xác nhận đã nhận tiền, hoặc hủy lượt đặt kèm lý do. */

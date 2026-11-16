@@ -1,12 +1,19 @@
+import { Alert } from "@/components/ui/controls";
 import { requireSession } from "@/lib/auth";
 import { DeleteAccountForm, PasswordForm, ProfileForm } from "./account-forms";
 
 export const metadata = { title: "Tài khoản - Cầu Lông Đà Nẵng" };
 
-export default async function AccountPage() {
+export default async function AccountPage({ searchParams }: PageProps<"/account">) {
   const session = await requireSession();
+  const { password_reset } = await searchParams;
   return (
     <div className="mx-auto grid w-full max-w-4xl gap-6 px-6 py-8 md:grid-cols-2">
+      {password_reset === "1" ? (
+        <div className="md:col-span-2">
+          <Alert tone="success">Đã đặt mật khẩu mới. Các thiết bị khác đã bị đăng xuất.</Alert>
+        </div>
+      ) : null}
       <section className="rounded-xl border border-slate-200 bg-white p-6">
         <h1 className="mb-4 text-lg font-bold">Thông tin cá nhân</h1>
         <ProfileForm fullName={session.profile.full_name} phone={session.profile.phone} email={session.email} />

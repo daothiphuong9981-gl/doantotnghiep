@@ -6,6 +6,7 @@ const LINKS = [
   { href: "/admin/reviews", label: "Kiểm duyệt đánh giá" },
   { href: "/admin/users", label: "Người dùng" },
   { href: "/admin/stats", label: "Thống kê hệ thống" },
+  { href: "/admin/logs", label: "Nhật ký quản trị" },
   { href: "/account", label: "Tài khoản" },
 ];
 

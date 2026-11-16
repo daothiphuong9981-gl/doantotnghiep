@@ -58,7 +58,7 @@ export default async function MyBookingsPage({ searchParams }: PageProps<"/booki
                 <StatusChip status={b.status} />
                 {b.status === "holding" ? (
                   <span className="text-xs font-semibold text-orange-600">
-                    <Countdown expiresAt={b.hold_expires_at} serverTime={result.data.server_time} />
+                    <Countdown expiresAt={b.hold_expires_at} serverTime={result.data.server_time} refreshOnExpire />
                   </span>
                 ) : null}
                 <span className="flex-1" />

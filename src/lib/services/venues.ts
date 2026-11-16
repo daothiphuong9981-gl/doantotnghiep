@@ -278,31 +278,39 @@ export async function getAvailabilityDetail(
   if (!detail.ok) return detail;
   const { venue, prices, courts } = detail.data;
   if (!rows) return fail(500, "Không tải được khung giờ");
+  return ok({ detail: detail.data, availability: buildAvailability({ venue, prices, courts }, date, rows) });
+}
+
+/**
+ * Lưới khung giờ một ngày từ giờ mở/đóng cửa, bảng giá, sân con và các khung đã có người giữ/đặt.
+ * Dùng chung cho trang chi tiết sân và trang chủ sân đặt hộ / khóa giờ.
+ */
+export function buildAvailability(
+  source: { venue: { open_time: string; close_time: string }; prices: PriceSlot[]; courts: { id: number; name: string }[] },
+  date: string,
+  rows: TakenSlot[],
+): Availability {
   const takenMap = new Map<string, "held" | "booked">();
   for (const row of rows) takenMap.set(`${row.court_id}|${hhmm(row.start_time)}`, row.state);
-
-  const openHour = Number(venue.open_time.slice(0, 2));
-  const closeHour = Number(venue.close_time.slice(0, 2));
+  const openHour = Number(source.venue.open_time.slice(0, 2));
+  const closeHour = Number(source.venue.close_time.slice(0, 2));
   const hours: string[] = [];
   for (let h = openHour; h < closeHour; h += 1) hours.push(`${String(h).padStart(2, "0")}:00`);
+  const today = todayInVietnam();
   const nowHour = currentHourInVietnam();
-
-  return ok({
-    detail: detail.data,
-    availability: {
-      date,
-      hours,
-      courts: courts.map((court) => ({
-        id: court.id,
-        name: court.name,
-        slots: hours.map((start) => {
-          const isPast = date === today && Number(start.slice(0, 2)) <= nowHour;
-          const state: SlotState = isPast ? "past" : (takenMap.get(`${court.id}|${start}`) ?? "available");
-          return { start_time: start, price: priceFor(prices, date, start), state };
-        }),
-      })),
-    },
-  });
+  return {
+    date,
+    hours,
+    courts: source.courts.map((court) => ({
+      id: court.id,
+      name: court.name,
+      slots: hours.map((start) => {
+        const isPast = date < today || (date === today && Number(start.slice(0, 2)) <= nowHour);
+        const state: SlotState = isPast ? "past" : (takenMap.get(`${court.id}|${start}`) ?? "available");
+        return { start_time: start, price: priceFor(source.prices, date, start), state };
+      }),
+    })),
+  };
 }
 
 /** PB11 - Trạng thái từng khung giờ 60 phút của từng sân con trong một ngày. */
